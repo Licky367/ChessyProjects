@@ -2,42 +2,52 @@ const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
 const projectUserSchema = new mongoose.Schema(
-  {
-    profileImage: {
-      type: String,
-      default: "",
-    },
-    name: {
-      type: String,
-      required: [true, "Name is required"],
-      trim: true,
-    },
-    // change these fields in projectUser.js
-
-phone: {
-  type: String,
-  default: null,
-},
-
-password: {
-  type: String,
-  minlength: 6,
-  select: false,
-  default: null,
-    },
-    role: {
-      type: String,
-      enum: ["dairyWorker", "poultryWorker", "admin"],
-      default: "dairyWorker",
-    },
+{
+  profileImage: {
+    type: String,
+    default: "", // fallback handled on frontend
   },
-  {
-    timestamps: true,
-    collection: "project-Users", // exact collection name
-  }
+
+  name: {
+    type: String,
+    required: [true, "Name is required"],
+    trim: true,
+  },
+
+  email: {
+    type: String,
+    required: [true, "Email is required"],
+    unique: true,
+    lowercase: true,
+    trim: true,
+  },
+
+  phone: {
+    type: String,
+    default: null,
+  },
+
+  password: {
+    type: String,
+    minlength: 6,
+    select: false,
+    required: true,
+  },
+
+  role: {
+    type: String,
+    enum: ["dairyWorker", "poultryWorker", "admin"],
+    default: "dairyWorker",
+  },
+
+},
+{
+  timestamps: true,
+  collection: "project-Users",
+}
 );
 
-// Hash password before saving
+// 🔐 Hash password
 projectUserSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
@@ -46,7 +56,7 @@ projectUserSchema.pre("save", async function (next) {
   next();
 });
 
-// Compare password method
+// 🔐 Compare password
 projectUserSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
