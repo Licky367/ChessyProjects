@@ -1,10 +1,17 @@
 <!-- views/update.ejs -->
 
 <style>
-.profile-wrap{
+.card{
+background:#fff;
+border-radius:16px;
+padding:24px;
+box-shadow:0 8px 24px rgba(0,0,0,.06);
+}
+
+.profile-top{
 display:flex;
 align-items:flex-start;
-gap:18px;
+gap:16px;
 flex-wrap:wrap;
 }
 
@@ -14,12 +21,12 @@ flex:0 0 auto;
 
 .profile-right{
 flex:1;
-min-width:250px;
+min-width:240px;
 }
 
-.profile-thumb{
-width:72px;
-height:72px;
+.avatar-img{
+width:74px;
+height:74px;
 border-radius:50%;
 object-fit:cover;
 cursor:pointer;
@@ -27,30 +34,70 @@ border:3px solid #fff;
 box-shadow:0 4px 14px rgba(0,0,0,.15);
 }
 
-.profile-thumb:hover{
+.avatar-img:hover{
 transform:scale(1.03);
-transition:.2s;
+transition:.2s ease;
 }
 
+.name-row{
+display:flex;
+align-items:center;
+gap:10px;
+flex-wrap:wrap;
+margin-bottom:6px;
+}
+
+.name-row h2{
+font-size:24px;
+color:#0b5d1e;
+margin:0;
+}
+
+.meta{
+font-size:14px;
+color:#555;
+margin-bottom:6px;
+}
+
+.badge{
+padding:6px 10px;
+border-radius:16px;
+font-size:12px;
+color:#fff;
+display:inline-block;
+}
+
+.bg-success{background:#198754;}
+.bg-secondary{background:#6c757d;}
+
+.editable{
+cursor:pointer;
+border-bottom:1px dashed #999;
+}
+
+.actions{
+margin-top:16px;
+padding-top:16px;
+border-top:1px solid #eee;
+}
+
+/* bottom sheet */
 .fb-sheet{
 position:fixed;
 left:0;
 right:0;
-bottom:-400px;
+bottom:-420px;
 background:#fff;
 border-radius:18px 18px 0 0;
-box-shadow:0 -8px 30px rgba(0,0,0,.18);
+box-shadow:0 -10px 30px rgba(0,0,0,.18);
 z-index:3000;
 transition:.25s ease;
 padding:15px;
 }
 
-.fb-sheet.show{
-bottom:0;
-}
+.fb-sheet.show{bottom:0;}
 
-.fb-sheet button,
-.fb-sheet a{
+.fb-sheet button{
 display:block;
 width:100%;
 padding:14px;
@@ -59,12 +106,11 @@ border:none;
 border-radius:10px;
 background:#f4f4f4;
 text-align:left;
-text-decoration:none;
-color:#222;
 font-weight:600;
 cursor:pointer;
 }
 
+/* modal */
 .gallery-box{
 position:relative;
 background:#111;
@@ -94,8 +140,8 @@ cursor:pointer;
 .gallery-next{right:10px;}
 
 .comment-item{
-border-bottom:1px solid #eee;
 padding:10px 0;
+border-bottom:1px solid #eee;
 }
 
 .comment-box{
@@ -109,19 +155,24 @@ flex:1;
 resize:none;
 }
 
-.editable{
-cursor:pointer;
-border-bottom:1px dashed #999;
+@media(max-width:600px){
+.profile-top{
+align-items:center;
+}
+.name-row h2{
+font-size:20px;
+}
 }
 </style>
 
 <div class="container mt-4">
 
-<div class="card shadow-sm border-0 p-4">
+<div class="card">
 
-<div class="profile-wrap">
+<!-- TOP PROFILE ROW -->
+<div class="profile-top">
 
-<!-- LEFT -->
+<!-- LEFT IMAGE -->
 <div class="profile-left">
 
 <% if (dairy.profileImage) { %>
@@ -129,23 +180,25 @@ border-bottom:1px dashed #999;
 src="/uploads/<%= dairy.profileImage %>"
 alt="<%= dairy.name %>"
 id="profilePreview"
-class="profile-thumb"
+class="avatar-img"
 >
 <% } else { %>
 <img
-src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=200"
+src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=220"
 alt="<%= dairy.name %>"
 id="profilePreview"
-class="profile-thumb"
+class="avatar-img"
 >
 <% } %>
 
 </div>
 
-<!-- RIGHT -->
+<!-- RIGHT DETAILS -->
 <div class="profile-right">
 
-<h3 class="mb-2">
+<div class="name-row">
+
+<h2>
 <% if (user && user.role === 'admin') { %>
 <span
 class="editable"
@@ -157,9 +210,12 @@ data-value="<%= dairy.name %>"
 <% } else { %>
 <%= dairy.name %>
 <% } %>
-</h3>
+</h2>
 
-<p class="mb-2">
+</div>
+
+<div class="meta">
+
 <strong>Code:</strong>
 
 <% if (user && user.role === 'admin') { %>
@@ -173,12 +229,19 @@ data-value="<%= dairy.code %>"
 <% } else { %>
 <%= dairy.code %>
 <% } %>
-</p>
 
-<p class="mb-2"><strong>Gender:</strong> <%= dairy.gender %></p>
-<p class="mb-2"><strong>Age:</strong> <span id="ageText"></span></p>
+</div>
 
-<p class="mb-2">
+<div class="meta">
+<strong>Gender:</strong> <%= dairy.gender %>
+</div>
+
+<div class="meta">
+<strong>Age:</strong> <span id="ageText"></span>
+</div>
+
+<div class="meta">
+
 <strong>Mass:</strong>
 
 <% if (user && user.role === 'admin') { %>
@@ -194,10 +257,11 @@ data-value="<%= dairy.mass || 0 %>"
 <% } %>
 
 Kgs
-</p>
+
+</div>
 
 <% if (dairy.gender === 'Female') { %>
-<p class="mb-2">
+<div class="meta">
 
 <strong>Status:</strong>
 
@@ -228,11 +292,15 @@ class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>"
 
 <% } %>
 
-</p>
+</div>
 <% } %>
 
+</div>
+</div>
+
+<!-- ACTIONS -->
 <% if (user && user.role === 'admin') { %>
-<hr>
+<div class="actions">
 
 <form
 action="/dairy/<%= dairy._id %>?_method=DELETE"
@@ -243,43 +311,39 @@ onsubmit="return confirm('Delete this profile permanently?')"
 Delete Profile
 </button>
 </form>
+
+</div>
 <% } %>
 
 </div>
 </div>
-</div>
-</div>
 
-<!-- ACTION SHEET -->
+<!-- IMAGE ACTION SHEET -->
 <div class="fb-sheet" id="imageSheet">
 
 <button onclick="openGallery()">👁 View Photo</button>
 
 <% if (user && user.role === 'admin') { %>
+
 <button onclick="document.getElementById('imageInput').click()">
 📷 Change Photo
 </button>
 
 <form
-id="deleteImageForm"
 action="/dairy/<%= dairy._id %>/image?_method=DELETE"
 method="POST"
 >
 <button type="submit">🗑 Delete Photo</button>
 </form>
+
 <% } %>
 
 <button onclick="closeSheet()">Cancel</button>
 
 </div>
 
-<!-- VIEWER -->
-<div
-class="modal fade"
-id="viewImageModal"
-tabindex="-1"
->
-
+<!-- VIEW MODAL -->
+<div class="modal fade" id="viewImageModal" tabindex="-1">
 <div class="modal-dialog modal-dialog-centered modal-xl">
 <div class="modal-content border-0">
 
@@ -347,7 +411,9 @@ data-bs-target="#commentsModal"
 <% }) %>
 
 <% } else { %>
+
 <p class="text-muted">No comments yet.</p>
+
 <% } %>
 
 <% if (user) { %>
@@ -430,7 +496,7 @@ document.getElementById("ageText").innerText =
 y + " years, " + m + " months, " + d + " days";
 })();
 
-/* IMAGE LIST */
+/* IMAGES */
 const images = [
 
 <% if (dairy.profileImage) { %>
@@ -439,14 +505,14 @@ const images = [
 "https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=600",
 <% } %>
 
-/uploads/sample-old-1.jpg",
+"/uploads/sample-old-1.jpg",
 "/uploads/sample-old-2.jpg"
 
 ];
 
 let currentIndex = 0;
 
-/* ACTION SHEET */
+/* sheet */
 document.getElementById("profilePreview")
 .addEventListener("click", function(){
 document.getElementById("imageSheet").classList.add("show");
@@ -456,7 +522,7 @@ function closeSheet(){
 document.getElementById("imageSheet").classList.remove("show");
 }
 
-/* GALLERY */
+/* gallery */
 function openGallery(){
 closeSheet();
 
@@ -484,7 +550,7 @@ document.getElementById("galleryImage").src =
 images[currentIndex];
 }
 
-/* EDITABLE */
+/* editable */
 document.querySelectorAll(".editable")
 .forEach(el => {
 
@@ -493,8 +559,10 @@ el.addEventListener("click", function(){
 const field = this.dataset.field;
 const current = this.dataset.value;
 
-const value =
-prompt("Update " + field, current);
+const value = prompt(
+"Update " + field,
+current
+);
 
 if(value === null) return;
 
@@ -511,7 +579,7 @@ form.submit();
 
 });
 
-/* MILKING */
+/* milking */
 document.getElementById("milkingToggle")
 ?.addEventListener("change", function(){
 
