@@ -3,6 +3,22 @@ const mongoose = require("mongoose");
 const path = require("path");
 const expressLayouts = require("express-ejs-layouts");
 
+#----- save session
+
+const session = require("express-session");
+
+app.use(session({
+  secret: "secret-key",
+  resave: false,
+  saveUninitialized: false,
+}));
+
+// make user available in all views
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
+
 const createRoutes = require("./routes/create");
 
 const app = express();
