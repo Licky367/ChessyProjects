@@ -1,4 +1,114 @@
-<% layout( { title: 'Sign Up' }) %>
+<% layout({ title: 'Sign Up' }) %>
+
+<style>
+.card{
+background:#fff;
+padding:25px;
+border-radius:12px;
+width:100%;
+max-width:400px;
+box-shadow:0 6px 18px rgba(0,0,0,.08);
+}
+
+h2{
+margin-bottom:15px;
+color:#0b5d1e;
+text-align:center;
+}
+
+form{
+display:flex;
+flex-direction:column;
+gap:12px;
+}
+
+/* INPUTS */
+input{
+padding:10px;
+border-radius:8px;
+border:1px solid #ccc;
+}
+
+button{
+background:#0b5d1e;
+color:#fff;
+padding:12px;
+border:none;
+border-radius:8px;
+cursor:pointer;
+}
+
+/* ERROR */
+.error{
+background:#ffe5e5;
+color:#c00;
+padding:10px;
+border-radius:8px;
+text-align:center;
+}
+
+/* PROFILE IMAGE */
+.avatar-box{
+display:flex;
+justify-content:center;
+margin-bottom:10px;
+}
+
+.avatar{
+width:90px;
+height:90px;
+border-radius:50%;
+object-fit:cover;
+cursor:pointer;
+border:3px solid #0b5d1e;
+transition:.2s;
+}
+
+.avatar:hover{
+opacity:0.8;
+}
+
+/* MODAL */
+.modal{
+position:fixed;
+top:0;left:0;right:0;bottom:0;
+background:rgba(0,0,0,.6);
+display:none;
+justify-content:center;
+align-items:center;
+z-index:2000;
+}
+
+.modal.active{
+display:flex;
+}
+
+.modal-content{
+background:#fff;
+padding:20px;
+border-radius:12px;
+text-align:center;
+}
+
+.modal-content img{
+width:200px;
+height:200px;
+border-radius:50%;
+object-fit:cover;
+margin-bottom:15px;
+}
+
+.modal-content button{
+margin:5px;
+}
+
+/* LOGIN LINK */
+.login-link{
+text-align:center;
+font-size:14px;
+margin-top:10px;
+}
+</style>
 
 <div class="card">
 <h2>Create Account</h2>
@@ -9,15 +119,81 @@
 
 <form method="POST" action="/signup" enctype="multipart/form-data">
 
+<!-- AVATAR -->
+<div class="avatar-box">
+<img 
+id="avatarPreview"
+class="avatar"
+src="https://ui-avatars.com/api/?name=User&background=0b5d1e&color=fff"
+alt="Avatar"
+/>
+</div>
+
+<input type="file" id="fileInput" name="profileImage" accept="image/*" hidden>
+
 <input type="text" name="name" placeholder="Full Name" required>
 <input type="email" name="email" placeholder="Email" required>
 <input type="text" name="phone" placeholder="Phone (optional)">
 <input type="password" name="password" placeholder="Password" required>
 
-<label>Profile Image (optional)</label>
-<input type="file" name="profileImage" accept="image/*">
-
 <button type="submit">Sign Up</button>
 
 </form>
+
+<div class="login-link">
+Already have an account? <a href="/login">Login</a>
 </div>
+
+</div>
+
+<!-- MODAL -->
+<div class="modal" id="imageModal">
+<div class="modal-content">
+
+<img id="modalImage" src="">
+
+<br>
+
+<button onclick="chooseNew()">Choose New</button>
+<button onclick="closeModal()">Close</button>
+
+</div>
+</div>
+
+<script>
+const avatar = document.getElementById("avatarPreview");
+const fileInput = document.getElementById("fileInput");
+const modal = document.getElementById("imageModal");
+const modalImage = document.getElementById("modalImage");
+
+// CLICK AVATAR
+avatar.addEventListener("click", () => {
+
+  // if default avatar → open file picker directly
+  if (!fileInput.files.length) {
+    fileInput.click();
+  } else {
+    // show modal if image exists
+    modalImage.src = avatar.src;
+    modal.classList.add("active");
+  }
+});
+
+// FILE SELECT
+fileInput.addEventListener("change", () => {
+  const file = fileInput.files[0];
+  if (file) {
+    avatar.src = URL.createObjectURL(file);
+  }
+});
+
+// MODAL ACTIONS
+function closeModal(){
+  modal.classList.remove("active");
+}
+
+function chooseNew(){
+  closeModal();
+  fileInput.click();
+}
+</script>
