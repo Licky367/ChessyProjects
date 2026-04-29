@@ -12,23 +12,18 @@ const projectUserSchema = new mongoose.Schema(
       required: [true, "Name is required"],
       trim: true,
     },
-    phone: {
-      type: String,
-      required: [true, "Phone is required"],
-      unique: true,
-    },
-    email: {
-      type: String,
-      required: [true, "Email is required"],
-      unique: true,
-      lowercase: true,
-      match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
-    },
-    password: {
-      type: String,
-      required: [true, "Password is required"],
-      minlength: 6,
-      select: false,
+    // change these fields in projectUser.js
+
+phone: {
+  type: String,
+  default: null,
+},
+
+password: {
+  type: String,
+  minlength: 6,
+  select: false,
+  default: null,
     },
     role: {
       type: String,
