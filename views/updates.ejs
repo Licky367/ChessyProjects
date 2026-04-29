@@ -1,0 +1,320 @@
+<!-- views/update.ejs -->
+
+<div class="container mt-4">
+
+  <div class="card shadow-sm border-0 p-4">
+    <div class="row align-items-start g-4">
+
+      <!-- LEFT SIDE IMAGE / AVATAR -->
+      <div class="col-md-4 text-center">
+
+        <% if (dairy.profileImage) { %>
+          <img
+            src="/uploads/<%= dairy.profileImage %>"
+            alt="<%= dairy.name %>"
+            class="img-fluid rounded shadow profile-clickable"
+            id="profilePreview"
+            style="max-height:280px;width:100%;object-fit:cover;cursor:pointer;"
+          >
+        <% } else { %>
+          <img
+            src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=300"
+            alt="<%= dairy.name %>"
+            class="img-fluid rounded-circle shadow profile-clickable"
+            id="profilePreview"
+            style="height:220px;width:220px;object-fit:cover;cursor:pointer;"
+          >
+        <% } %>
+
+        <% if (user && user.role === 'admin') { %>
+          <small class="text-muted d-block mt-2">
+            Tap image to view / change / delete
+          </small>
+        <% } %>
+
+      </div>
+
+      <!-- RIGHT SIDE DETAILS -->
+      <div class="col-md-8">
+
+        <!-- Editable Name -->
+        <h2 class="mb-3">
+          <% if (user && user.role === 'admin') { %>
+            <span
+              class="editable"
+              data-field="name"
+              data-value="<%= dairy.name %>"
+            >
+              <%= dairy.name %>
+            </span>
+          <% } else { %>
+            <%= dairy.name %>
+          <% } %>
+        </h2>
+
+        <!-- Editable Code -->
+        <h4 class="text-muted mb-3">
+          Code:
+          <% if (user && user.role === 'admin') { %>
+            <span
+              class="editable"
+              data-field="code"
+              data-type="number"
+              data-value="<%= dairy.code %>"
+            >
+              <%= dairy.code %>
+            </span>
+          <% } else { %>
+            <%= dairy.code %>
+          <% } %>
+        </h4>
+
+        <% if (dairy.code >= 0) { %>
+
+          <p>
+            <strong>Gender:</strong>
+            <%= dairy.gender %>
+          </p>
+
+          <p>
+            <strong>Age:</strong>
+            <span id="ageText"></span>
+          </p>
+
+        <% } %>
+
+        <!-- Editable Mass -->
+        <p>
+          <strong>Mass:</strong>
+
+          <% if (user && user.role === 'admin') { %>
+            <span
+              class="editable"
+              data-field="mass"
+              data-type="number"
+              data-value="<%= dairy.mass || 0 %>"
+            >
+              <%= dairy.mass || 0 %>
+            </span>
+          <% } else { %>
+            <%= dairy.mass || 0 %>
+          <% } %>
+
+          Kgs
+        </p>
+
+        <!-- Female Only -->
+        <% if (dairy.gender === 'Female') { %>
+          <p>
+            <strong>Status:</strong>
+
+            <% if (user && user.role === 'admin') { %>
+
+              <label class="form-check-label">
+                <input
+                  type="checkbox"
+                  id="milkingToggle"
+                  <%= dairy.isMilking ? 'checked' : '' %>
+                >
+                <span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>" id="milkBadge">
+                  <%= dairy.isMilking ? 'Being Milked' : 'Not Milked' %>
+                </span>
+              </label>
+
+            <% } else { %>
+
+              <span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+                <%= dairy.isMilking ? 'Being Milked' : 'Not Milked' %>
+              </span>
+
+            <% } %>
+
+          </p>
+        <% } %>
+
+        <!-- DELETE -->
+        <% if (user && user.role === 'admin') { %>
+          <hr>
+
+          <form
+            action="/dairy/<%= dairy._id %>?_method=DELETE"
+            method="POST"
+            onsubmit="return confirm('Delete this profile permanently?')"
+          >
+            <button class="btn btn-danger">
+              Delete Profile
+            </button>
+          </form>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMAGE ACTION MODAL -->
+<% if (user && user.role === 'admin') { %>
+<div class="modal fade" id="imageModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <h5 class="modal-title">Profile Image</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <div class="modal-body">
+
+        <% if (dairy.profileImage) { %>
+          <img
+            src="/uploads/<%= dairy.profileImage %>"
+            class="img-fluid rounded mb-3"
+          >
+        <% } %>
+
+        <!-- Update Image -->
+        <form
+          action="/dairy/<%= dairy._id %>/image?_method=PUT"
+          method="POST"
+          enctype="multipart/form-data"
+        >
+          <div class="mb-3">
+            <input
+              type="file"
+              name="profileImage"
+              class="form-control"
+              required
+            >
+          </div>
+
+          <div class="mb-3">
+            <textarea
+              name="comment"
+              class="form-control"
+              rows="3"
+              placeholder="Write a comment (optional)"
+            ></textarea>
+          </div>
+
+          <button class="btn btn-primary">
+            Save Image
+          </button>
+        </form>
+
+        <% if (dairy.profileImage) { %>
+          <hr>
+
+          <form
+            action="/dairy/<%= dairy._id %>/image?_method=DELETE"
+            method="POST"
+            onsubmit="return confirm('Delete current image?')"
+          >
+            <button class="btn btn-outline-danger">
+              Delete Current Image
+            </button>
+          </form>
+        <% } %>
+
+      </div>
+    </div>
+  </div>
+</div>
+<% } %>
+
+<!-- INLINE EDIT FORM -->
+<form
+  id="inlineEditForm"
+  method="POST"
+  style="display:none;"
+>
+  <input type="hidden" name="_method" value="PUT">
+  <input type="hidden" name="field" id="editField">
+  <input type="hidden" name="value" id="editValue">
+</form>
+
+<!-- AGE CALCULATOR -->
+<script>
+(function () {
+  const dob = "<%= dairy.dob ? dairy.dob.toISOString() : '' %>";
+  if (!dob) return;
+
+  const birthDate = new Date(dob);
+  const today = new Date();
+
+  let years = today.getFullYear() - birthDate.getFullYear();
+  let months = today.getMonth() - birthDate.getMonth();
+  let days = today.getDate() - birthDate.getDate();
+
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+    days += prevMonth.getDate();
+  }
+
+  if (months < 0) {
+    years--;
+    months += 12;
+  }
+
+  const target = document.getElementById('ageText');
+  if (target) {
+    target.innerText = years + ' years, ' + months + ' months, ' + days + ' days';
+  }
+})();
+</script>
+
+<!-- INLINE EDIT -->
+<% if (user && user.role === 'admin') { %>
+<script>
+document.querySelectorAll('.editable').forEach(item => {
+  item.addEventListener('click', function () {
+
+    const field = this.dataset.field;
+    const current = this.dataset.value || this.innerText.trim();
+    const type = this.dataset.type || 'text';
+
+    const value = prompt('Update ' + field, current);
+
+    if (value === null) return;
+
+    document.getElementById('editField').value = field;
+    document.getElementById('editValue').value = value;
+
+    const form = document.getElementById('inlineEditForm');
+    form.action = '/dairy/<%= dairy._id %>';
+    form.submit();
+  });
+});
+
+/* Image modal open */
+document.getElementById('profilePreview')?.addEventListener('click', function () {
+  const modal = new bootstrap.Modal(document.getElementById('imageModal'));
+  modal.show();
+});
+
+/* Milking toggle */
+document.getElementById('milkingToggle')?.addEventListener('change', function () {
+
+  fetch('/dairy/<%= dairy._id %>/milking', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      isMilking: this.checked
+    })
+  }).then(() => {
+    const badge = document.getElementById('milkBadge');
+
+    if (this.checked) {
+      badge.innerText = 'Being Milked';
+      badge.classList.remove('bg-secondary');
+      badge.classList.add('bg-success');
+    } else {
+      badge.innerText = 'Not Milked';
+      badge.classList.remove('bg-success');
+      badge.classList.add('bg-secondary');
+    }
+  });
+
+});
+</script>
+<% } %>
