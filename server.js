@@ -47,6 +47,8 @@ mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
 
 // ===== ROUTES =====
 app.use("/create-invite", createRoutes);
+app.use("/", authRoutes);
+
 
 // optional: redirect home
 app.get("/", (req, res) => {
