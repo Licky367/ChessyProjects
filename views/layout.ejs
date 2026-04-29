@@ -1,199 +1,247 @@
-<% layout({ title: 'Sign Up' }) %>
+<!DOCTYPE html>
+<html lang="en">    
+<head>    
+<meta charset="UTF-8">    
+<meta name="viewport" content="width=device-width, initial-scale=1.0">    
+<title><%= title || "Corevester" %></title>  <style>    
+*{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif;}    
+body{background:#f4f6f8;min-height:100vh;}    /* HEADER */
+.header{
+position:fixed;top:0;left:0;right:0;height:70px;
+background:#0b5d1e;color:#fff;
+display:flex;align-items:center;justify-content:center;
+font-size:22px;font-weight:bold;z-index:1000;
+}
 
-<style>
-.card{
+/* TOP MENU */
+.topmenu{
+position:fixed;
+top:70px;
+left:0;
+right:0;
+height:60px;
 background:#fff;
-padding:25px;
-border-radius:12px;
-width:100%;
-max-width:400px;
-box-shadow:0 6px 18px rgba(0,0,0,.08);
+display:flex;
+align-items:center;
+justify-content:space-between;
+padding:0 20px;
+box-shadow:0 4px 12px rgba(0,0,0,.05);
+z-index:1500;
 }
 
-h2{
-margin-bottom:15px;
+.left-menu{
+display:flex;
+align-items:center;
+gap:18px;
+}
+
+/* MENU BUTTON (FIXED VISIBILITY) */
+.menu-btn{
+font-size:28px;
+cursor:pointer;
 color:#0b5d1e;
-text-align:center;
+font-weight:bold;
+display:flex;
+align-items:center;
+justify-content:center;
+width:42px;
+height:42px;
+border-radius:8px;
+background:#fff;
+border:1px solid #ddd;
+transition:.2s ease;
+z-index:1600;
 }
 
-form{
+.menu-btn:hover{
+background:rgba(11,93,30,0.1);
+}
+
+/* PROFILE */
+.profile-box{position:relative;}
+
+.profile-trigger{
 display:flex;
 flex-direction:column;
-gap:12px;
-}
-
-/* INPUTS */
-input{
-padding:10px;
-border-radius:8px;
-border:1px solid #ccc;
-}
-
-button{
-background:#0b5d1e;
-color:#fff;
-padding:12px;
-border:none;
-border-radius:8px;
+align-items:center;
 cursor:pointer;
+gap:4px;
 }
 
-/* ERROR */
-.error{
-background:#ffe5e5;
-color:#c00;
-padding:10px;
-border-radius:8px;
-text-align:center;
-}
-
-/* PROFILE IMAGE */
-.avatar-box{
-display:flex;
-justify-content:center;
-margin-bottom:10px;
-}
-
-.avatar{
-width:90px;
-height:90px;
+.profile-avatar{
+width:38px;
+height:38px;
 border-radius:50%;
 object-fit:cover;
-cursor:pointer;
-border:3px solid #0b5d1e;
-transition:.2s;
+border:2px solid #0b5d1e;
 }
 
-.avatar:hover{
-opacity:0.8;
+.profile-name{
+font-size:12px;
+color:#0b5d1e;
+font-weight:600;
+max-width:80px;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
 }
 
-/* MODAL */
-.modal{
+.dropdown{
+position:absolute;
+right:0;top:55px;width:180px;
+background:#fff;border-radius:12px;
+box-shadow:0 10px 25px rgba(0,0,0,.08);
+display:none;
+}
+
+.dropdown a{
+display:flex;
+align-items:center;
+gap:10px;
+padding:14px;
+text-decoration:none;
+color:#333;
+border-bottom:1px solid #eee;
+}
+
+.profile-box.active .dropdown{display:block;}
+
+/* SIDEBAR */
+.sidebar{
+position:fixed;
+top:130px;
+left:-260px;
+width:240px;
+height:calc(100% - 130px - 50px);
+background:#0b5d1e;
+padding:20px;
+transition:.3s ease;
+z-index:1200;
+overflow-y:auto;
+}
+
+.sidebar.active{left:0;}
+
+.sidebar a{
+display:flex;
+align-items:center;
+gap:12px;
+color:#fff;
+text-decoration:none;
+padding:12px;
+margin-bottom:8px;
+border-radius:8px;
+font-size:14px;
+}
+
+.sidebar a:hover{
+background:rgba(255,255,255,.15);
+}
+
+/* OVERLAY */
+.overlay{
 position:fixed;
 top:0;left:0;right:0;bottom:0;
-background:rgba(0,0,0,.6);
-display:none;
+background:rgba(0,0,0,.35);
+display:none;z-index:1100;
+}
+.overlay.active{display:block;}
+
+/* MAIN */
+.main{
+padding:150px 20px 80px;
+}
+
+/* AUTH PAGE MAIN */
+.main.auth{
+padding:40px 20px;
+display:flex;
 justify-content:center;
 align-items:center;
-z-index:2000;
+min-height:100vh;
 }
 
-.modal.active{
-display:flex;
+/* FOOTER */
+.footer{
+position:fixed;
+bottom:0;left:0;right:0;height:50px;
+background:#0b5d1e;color:#fff;
+display:flex;align-items:center;justify-content:center;
+font-size:13px;
+}
+</style>  </head>  <body>  <%
+const authPages = [
+"/login",
+"/signup",
+"/forgot-password",
+"/reset-password"
+];
+const isAuthPage = authPages.includes(req.path);
+%>
+
+<% if (!isAuthPage) { %>
+
+<!-- HEADER -->  <div class="header">    Corevester Investments Limited
+
+</div>  <!-- TOP MENU -->  <div class="topmenu">  <div class="left-menu">    
+<div class="menu-btn" onclick="openSidebar()" aria-label="Open Menu">    
+&#9776;    
+</div>    
+</div>  <!-- PROFILE -->  <div class="profile-box" id="profileBox">  <div class="profile-trigger" onclick="toggleProfile(event)">  <% if (user && user.profileImage) { %>  
+<img src="/uploads/<%= user.profileImage %>" class="profile-avatar" alt="Profile">  
+<% } else { %>  
+<img src="https://ui-avatars.com/api/?name=<%= user ? user.name : 'Profile' %>&background=0b5d1e&color=fff" class="profile-avatar" alt="Avatar">  
+<% } %>  <div class="profile-name">    
+<%= user ? user.name : "Profile" %>    
+</div>  </div>  <div class="dropdown">    
+<% if(user){ %>    
+<a href="/profile">👤 My Account</a>    
+<a href="/logout">🚪 Logout</a>    
+<% } else { %>    
+<a href="/login">🔑 Login</a>    
+<a href="/signup">📝 Sign Up</a>    
+<% } %>    
+</div>  </div>  </div>  <!-- SIDEBAR -->  <div class="sidebar" id="sidebar">  <% if(user && user.role === "client") { %>  
+<a href="/client">⌂ Home</a>  
+<a href="/cart">🛍 Cart</a>  
+<a href="/client/orders">📦 My Orders</a>  
+<a href="/client/unpaid/orders">⏳ Pending Payments</a>  
+<a href="/logout">🚪 Logout</a>  
+<% } else { %>  
+<a href="/admin/dashboard">📊 Dashboard</a>  
+<a href="/category/create">➕ Add Category</a>  
+<a href="/admin/products">📦 Products</a>  
+<a href="/admin/products/create">🆕 Create Product</a>  
+<a href="/category">🗂️ Available Categories</a>  
+<a href="/admin/orders">🧾 Orders</a>  
+<a href="/admin/unpaid/orders">⏳ Pending Payments</a>  
+<a href="/admin/clients">👥 Clients</a>  
+<% } %>  </div>  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>  <% } %>  <!-- MAIN CONTENT -->  <div class="main <%= isAuthPage ? 'auth' : '' %>">    <%- body %>
+
+</div>  <% if (!isAuthPage) { %>  <!-- FOOTER -->  <div class="footer">    © <%= new Date().getFullYear() %> Corevester Investments Limited
+
+</div>  <script>    
+const sidebar = document.getElementById("sidebar");    
+const overlay = document.getElementById("overlay");    
+const profileBox = document.getElementById("profileBox");    function openSidebar(){
+sidebar.classList.add("active");
+overlay.classList.add("active");
 }
 
-.modal-content{
-background:#fff;
-padding:20px;
-border-radius:12px;
-text-align:center;
+function closeSidebar(){
+sidebar.classList.remove("active");
+overlay.classList.remove("active");
 }
 
-.modal-content img{
-width:200px;
-height:200px;
-border-radius:50%;
-object-fit:cover;
-margin-bottom:15px;
+function toggleProfile(e){
+e.stopPropagation();
+profileBox.classList.toggle("active");
 }
 
-.modal-content button{
-margin:5px;
-}
-
-/* LOGIN LINK */
-.login-link{
-text-align:center;
-font-size:14px;
-margin-top:10px;
-}
-</style>
-
-<div class="card">
-<h2>Create Account</h2>
-
-<% if(error){ %>
-<div class="error"><%= error %></div>
-<% } %>
-
-<form method="POST" action="/signup" enctype="multipart/form-data">
-
-<!-- AVATAR -->
-<div class="avatar-box">
-<img 
-id="avatarPreview"
-class="avatar"
-src="https://ui-avatars.com/api/?name=User&background=0b5d1e&color=fff"
-alt="Avatar"
-/>
-</div>
-
-<input type="file" id="fileInput" name="profileImage" accept="image/*" hidden>
-
-<input type="text" name="name" placeholder="Full Name" required>
-<input type="email" name="email" placeholder="Email" required>
-<input type="text" name="phone" placeholder="Phone (optional)">
-<input type="password" name="password" placeholder="Password" required>
-
-<button type="submit">Sign Up</button>
-
-</form>
-
-<div class="login-link">
-Already have an account? <a href="/login">Login</a>
-</div>
-
-</div>
-
-<!-- MODAL -->
-<div class="modal" id="imageModal">
-<div class="modal-content">
-
-<img id="modalImage" src="">
-
-<br>
-
-<button onclick="chooseNew()">Choose New</button>
-<button onclick="closeModal()">Close</button>
-
-</div>
-</div>
-
-<script>
-const avatar = document.getElementById("avatarPreview");
-const fileInput = document.getElementById("fileInput");
-const modal = document.getElementById("imageModal");
-const modalImage = document.getElementById("modalImage");
-
-// CLICK AVATAR
-avatar.addEventListener("click", () => {
-
-  // if default avatar → open file picker directly
-  if (!fileInput.files.length) {
-    fileInput.click();
-  } else {
-    // show modal if image exists
-    modalImage.src = avatar.src;
-    modal.classList.add("active");
-  }
+document.addEventListener("click",()=>{
+profileBox.classList.remove("active");
 });
+</script>  <% } %>
 
-// FILE SELECT
-fileInput.addEventListener("change", () => {
-  const file = fileInput.files[0];
-  if (file) {
-    avatar.src = URL.createObjectURL(file);
-  }
-});
-
-// MODAL ACTIONS
-function closeModal(){
-  modal.classList.remove("active");
-}
-
-function chooseNew(){
-  closeModal();
-  fileInput.click();
-}
-</script>
+</body>    
+</html>
