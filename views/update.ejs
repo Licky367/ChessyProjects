@@ -1,0 +1,140 @@
+<!-- views/update.ejs -->
+
+<div class="container mt-4">
+
+<div class="card">
+
+<div class="profile-top">
+
+<!-- LEFT -->
+<div class="profile-left">
+
+<img
+src="<%= dairy.displayImage %>"
+alt="<%= dairy.name %>"
+id="profilePreview"
+class="avatar-img"
+>
+
+</div>
+
+<!-- RIGHT -->
+<div class="profile-right">
+
+<div class="name-row">
+<h2>
+
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="name" data-value="<%= dairy.name %>">
+<%= dairy.name %>
+</span>
+<% } else { %>
+<%= dairy.name %>
+<% } %>
+
+</h2>
+</div>
+
+<div class="meta">
+<strong>Code:</strong>
+
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="code" data-value="<%= dairy.code %>">
+<%= dairy.code %>
+</span>
+<% } else { %>
+<%= dairy.code %>
+<% } %>
+
+</div>
+
+<% if (dairy.hasIdentity) { %>
+<div class="meta"><strong>Gender:</strong> <%= dairy.gender %></div>
+<div class="meta"><strong>Age:</strong> <%= dairy.ageText %></div>
+<% } %>
+
+<div class="meta">
+<strong>Mass:</strong>
+
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="mass" data-value="<%= dairy.mass %>">
+<%= dairy.mass %>
+</span>
+<% } else { %>
+<%= dairy.mass %>
+<% } %>
+
+Kgs
+</div>
+
+<% if (dairy.isFemale) { %>
+<div class="meta">
+
+<strong>Status:</strong>
+
+<% if (user?.role === 'admin') { %>
+
+<label>
+<input type="checkbox" id="milkingToggle" <%= dairy.isMilking ? 'checked' : '' %>>
+
+<span id="milkBadge" class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+<%= dairy.isMilkingText %>
+</span>
+</label>
+
+<% } else { %>
+
+<span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+<%= dairy.isMilkingText %>
+</span>
+
+<% } %>
+
+</div>
+<% } %>
+
+</div>
+</div>
+
+<!-- DELETE -->
+<% if (user?.role === 'admin') { %>
+<div class="actions">
+<form action="/dairy/<%= dairy._id %>?_method=DELETE" method="POST">
+<button class="btn btn-danger">Delete Profile</button>
+</form>
+</div>
+<% } %>
+
+</div>
+</div>
+
+<!-- COMMENTS -->
+<div class="container mt-3">
+
+<div class="card">
+
+<h4>Comments</h4>
+
+<% if (updates.length) { %>
+
+<% updates.forEach(item => { %>
+<div class="comment-item">
+<strong><%= item.userName %></strong><br>
+<%= item.comment %><br>
+<small><%= item.dateText %></small>
+</div>
+<% }) %>
+
+<% } else { %>
+<p>No comments yet.</p>
+<% } %>
+
+<% if (user) { %>
+<form action="/dairy/<%= dairy._id %>/comment" method="POST" class="comment-box">
+<textarea name="comment" required></textarea>
+<button class="btn btn-primary">Post</button>
+</form>
+<% } %>
+
+</div>
+</div>
