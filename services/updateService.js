@@ -74,8 +74,9 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     isMilking: dairy.isMilking,
     isMilkingText: dairy.isMilking ? 'Being Milked' : 'Not Milked',
 
-    // 🔥 NEW
-    medicalAttention: dairy.medicalAttention || null
+    medicalAttention: dairy.medicalAttention || {
+      isMarked: false
+    }
   };
 };
 
@@ -157,7 +158,6 @@ exports.getNegativeDairies = async () => {
 exports.addComment = async ({ dairyId, userId, comment }) => {
 
   const clean = comment?.trim();
-
   if (!clean) throw new Error('Comment is required');
 
   return Update.create({
@@ -190,7 +190,7 @@ exports.updateImage = async ({ dairyId, userId, image }) => {
 
 
 // =========================
-// 🚑 MARK MEDICAL ATTENTION
+// 🚑 MARK MEDICAL ATTENTION (IMPROVED)
 // =========================
 exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
 
@@ -199,19 +199,16 @@ exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
   }
 
   const dairy = await Dairy.findById(dairyId);
-
   if (!dairy) throw new Error('Dairy not found');
 
-  if (dairy.medicalAttention?.isMarked) {
-    throw new Error('Already marked for medical attention');
-  }
-
+  // 🔥 ALLOW UPDATE (instead of blocking)
   dairy.medicalAttention = {
     isMarked: true,
-    type,
-    details,
+    type: type.trim(),
+    details: details.trim(),
     markedBy: userId,
-    markedAt: new Date()
+    markedAt: new Date(),
+    updatedAt: new Date()
   };
 
   await dairy.save();
@@ -221,12 +218,11 @@ exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
 
 
 // =========================
-// 🚑 UNMARK MEDICAL ATTENTION (ADMIN ONLY)
+// 🚑 UNMARK MEDICAL ATTENTION
 // =========================
 exports.unmarkMedicalAttention = async ({ dairyId }) => {
 
   const dairy = await Dairy.findById(dairyId);
-
   if (!dairy) throw new Error('Dairy not found');
 
   dairy.medicalAttention = {
@@ -234,7 +230,8 @@ exports.unmarkMedicalAttention = async ({ dairyId }) => {
     type: '',
     details: '',
     markedBy: null,
-    markedAt: null
+    markedAt: null,
+    updatedAt: new Date()
   };
 
   await dairy.save();
