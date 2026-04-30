@@ -1,5 +1,3 @@
-// models/dairy.js
-
 const mongoose = require('mongoose');
 
 const dairySchema = new mongoose.Schema(
@@ -41,7 +39,7 @@ const dairySchema = new mongoose.Schema(
     dob: {
       type: Date,
       required: function () {
-        return this.code >= 0; // Only real animals require DOB
+        return this.code >= 0;
       },
       default: null
     },
@@ -73,7 +71,7 @@ const dairySchema = new mongoose.Schema(
     },
 
     // =========================
-    // MEDICAL ATTENTION SYSTEM
+    // MEDICAL ATTENTION SYSTEM (IMPROVED)
     // =========================
     medicalAttention: {
       isMarked: {
@@ -102,14 +100,18 @@ const dairySchema = new mongoose.Schema(
       markedAt: {
         type: Date,
         default: null
+      },
+
+      // 🔥 NEW (audit safety - optional but important)
+      updatedAt: {
+        type: Date,
+        default: null
       }
     }
   },
 
   {
     timestamps: true,
-
-    // allow virtuals in JSON & EJS
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
@@ -120,41 +122,53 @@ const dairySchema = new mongoose.Schema(
 // VIRTUALS
 // =========================
 
-// Gender (derived from code)
+// Gender
 dairySchema.virtual('gender').get(function () {
   if (this.code < 0) return null;
   return this.code % 2 === 0 ? 'Female' : 'Male';
 });
 
-// Female helper
+// Female check
 dairySchema.virtual('isFemale').get(function () {
   return this.code >= 0 && this.code % 2 === 0;
 });
 
-// Identity helper (valid animal vs facility)
+// Identity check
 dairySchema.virtual('hasIdentity').get(function () {
   return this.code >= 0;
 });
 
-// Medical shortcut helper
+// Medical shortcut
 dairySchema.virtual('needsMedicalAttention').get(function () {
-  return this.medicalAttention && this.medicalAttention.isMarked;
+  return !!(this.medicalAttention && this.medicalAttention.isMarked);
 });
 
 
 // =========================
-// PRE-SAVE HOOK (DATA SAFETY)
+// PRE-SAVE SAFETY HOOK
 // =========================
 dairySchema.pre('save', function (next) {
 
-  // If not female → force isMilking false
+  // enforce milking rule
   if (!this.isFemale) {
     this.isMilking = false;
   }
 
-  // If facility → remove DOB
+  // remove DOB for non-animals
   if (this.code < 0) {
     this.dob = null;
+  }
+
+  // 🔥 ensure medical consistency
+  if (!this.medicalAttention) {
+    this.medicalAttention = {
+      isMarked: false,
+      type: '',
+      details: '',
+      markedBy: null,
+      markedAt: null,
+      updatedAt: null
+    };
   }
 
   next();
@@ -162,7 +176,7 @@ dairySchema.pre('save', function (next) {
 
 
 // =========================
-// INDEXES (PERFORMANCE)
+// INDEXES
 // =========================
 dairySchema.index({ code: 1 }, { unique: true });
 
