@@ -20,6 +20,8 @@ app.use((req, res, next) => {
 });
 
 const createRoutes = require("./routes/create");
+const authRoutes = require("./routes/auth");
+const updateRoutes = require("./routes/update");
 
 const app = express();
 
@@ -48,6 +50,7 @@ mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
 // ===== ROUTES =====
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
+app.use("/", updateRoutes);
 
 
 // optional: redirect home
