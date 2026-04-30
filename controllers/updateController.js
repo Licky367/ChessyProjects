@@ -1,5 +1,3 @@
-// controllers/updateController.js
-
 const updateService = require('../services/updateService');
 
 
@@ -84,9 +82,8 @@ exports.comment = async (req, res) => {
 
     const comment = req.body.comment?.trim();
 
-    if (!comment) {
-      return res.status(400).send('Comment cannot be empty');
-    }
+    if (!user) return res.status(401).send('Unauthorized');
+    if (!comment) return res.status(400).send('Comment cannot be empty');
 
     const saved = await updateService.addComment({
       dairyId: id,
@@ -95,12 +92,13 @@ exports.comment = async (req, res) => {
     });
 
     const io = req.app.get('io');
+
     if (io) {
       io.to(id).emit('commentAdded', {
         _id: saved._id,
         comment: saved.comment,
         userName: user.name,
-        dateText: saved.createdAt.toDateString()
+        dateText: new Date(saved.createdAt).toLocaleString()
       });
     }
 
@@ -123,9 +121,8 @@ exports.image = async (req, res) => {
     const { id } = req.params;
     const user = req.session.user;
 
-    if (!req.file) {
-      return res.status(400).send('No image uploaded');
-    }
+    if (!user) return res.status(401).send('Unauthorized');
+    if (!req.file) return res.status(400).send('No image uploaded');
 
     await updateService.updateImage({
       dairyId: id,
@@ -134,6 +131,7 @@ exports.image = async (req, res) => {
     });
 
     const io = req.app.get('io');
+
     if (io) {
       io.to(id).emit('imageUpdated', {
         image: `/uploads/${req.file.filename}`
@@ -159,16 +157,19 @@ exports.markMedicalAttention = async (req, res) => {
     const { id } = req.params;
     const user = req.session.user;
 
-    if (!user || user.role !== 'dairyWorker') {
-      return res.status(403).send('Access denied');
+    if (!user) return res.status(401).send('Unauthorized');
+
+    if (user.role !== 'dairyWorker') {
+      return res.status(403).send('Only dairy workers can mark medical attention');
     }
 
     const { type, details } = req.body;
 
-    if (!type || !details) {
+    if (!type?.trim() || !details?.trim()) {
       return res.status(400).send('Medical type and details are required');
     }
 
+    // 🔥 UPDATE DB (CRITICAL FIX: ensure persistence)
     const updated = await updateService.markMedicalAttention({
       dairyId: id,
       userId: user._id,
@@ -177,10 +178,14 @@ exports.markMedicalAttention = async (req, res) => {
     });
 
     const io = req.app.get('io');
+
     if (io) {
       io.to(id).emit('medicalMarked', {
+        dairyId: id,
         type: updated.medicalAttention.type,
-        details: updated.medicalAttention.details
+        details: updated.medicalAttention.details,
+        userName: user.name,
+        dateText: new Date(updated.medicalAttention.markedAt).toLocaleString()
       });
     }
 
@@ -203,18 +208,25 @@ exports.unmarkMedicalAttention = async (req, res) => {
     const { id } = req.params;
     const user = req.session.user;
 
-    if (!user || user.role !== 'admin') {
-      return res.status(403).send('Access denied');
+    if (!user) return res.status(401).send('Unauthorized');
+
+    if (user.role !== 'admin') {
+      return res.status(403).send('Only admin can unmark medical attention');
     }
 
-    const updated = await updateService.unmarkMedicalAttention({
+    // 🔥 UPDATE DB (ENSURE CLEAN RESET)
+    await updateService.unmarkMedicalAttention({
       dairyId: id
     });
 
     const io = req.app.get('io');
+
     if (io) {
       io.to(id).emit('medicalUnmarked', {
-        cleared: true
+        dairyId: id,
+        cleared: true,
+        userName: user.name,
+        dateText: new Date().toLocaleString()
       });
     }
 
