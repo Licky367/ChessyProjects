@@ -60,7 +60,8 @@ exports.viewPage = async (req, res) => {
       title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
-      commentCount: data.commentCount, // ✅ IMPORTANT
+      posts: data.posts || [], // ✅ NEW
+      commentCount: data.commentCount,
       user: req.session.user || null
     });
 
@@ -73,7 +74,7 @@ exports.viewPage = async (req, res) => {
 
 /**
  * ===========================
- * ADD COMMENT (FINAL)
+ * ADD MEDICAL COMMENT
  * ===========================
  */
 exports.comment = async (req, res) => {
@@ -105,13 +106,11 @@ exports.comment = async (req, res) => {
       createdAt: saved.createdAt
     };
 
-    /* SOCKET */
     const io = req.app.get('io');
     if (io) {
       io.to(id).emit('commentAdded', payload);
     }
 
-    /* AJAX vs FORM */
     const wantsJSON =
       req.xhr ||
       req.headers.accept?.includes('json');
@@ -253,5 +252,188 @@ exports.unmarkMedicalAttention = async (req, res) => {
   } catch (err) {
     console.error('MEDICAL UNMARK ERROR:', err.message);
     res.status(500).send('Failed to unmark medical attention');
+  }
+};
+
+
+/* =========================================================
+   🟦 POSTS SYSTEM
+========================================================= */
+
+/**
+ * CREATE POST
+ */
+exports.createPost = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    const text = req.body.text?.trim();
+    const image = req.file ? req.file.filename : null;
+
+    if (!text && !image) {
+      return res.status(400).send('Post cannot be empty');
+    }
+
+    const post = await updateService.createPost({
+      dairyId: id,
+      userId: user._id,
+      userName: user.name,
+      text,
+      image
+    });
+
+    const payload = {
+      ...post,
+      dateText: new Date(post.createdAt).toLocaleString()
+    };
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(id).emit('postCreated', payload);
+    }
+
+    res.json(payload);
+
+  } catch (err) {
+    console.error('CREATE POST ERROR:', err.message);
+    res.status(500).send('Failed to create post');
+  }
+};
+
+
+/**
+ * LIKE / UNLIKE POST
+ */
+exports.likePost = async (req, res) => {
+  try {
+    const user = req.session.user;
+    const { id } = req.params;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    const result = await updateService.toggleLike({
+      postId: id,
+      userId: user._id
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('postLiked', {
+        postId: id,
+        likes: result.likes
+      });
+    }
+
+    res.json(result);
+
+  } catch (err) {
+    console.error('LIKE ERROR:', err.message);
+    res.status(500).send('Failed to like post');
+  }
+};
+
+
+/**
+ * ADD COMMENT TO POST
+ */
+exports.addPostComment = async (req, res) => {
+  try {
+    const user = req.session.user;
+    const { id } = req.params;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    const text = req.body.text?.trim();
+    if (!text) return res.status(400).send('Comment empty');
+
+    const comment = await updateService.addPostComment({
+      postId: id,
+      userId: user._id,
+      userName: user.name,
+      text
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('postCommentAdded', {
+        postId: id,
+        comment
+      });
+    }
+
+    res.json(comment);
+
+  } catch (err) {
+    console.error('POST COMMENT ERROR:', err.message);
+    res.status(500).send('Failed to comment');
+  }
+};
+
+
+/**
+ * DELETE POST
+ */
+exports.deletePost = async (req, res) => {
+  try {
+    const user = req.session.user;
+    const { id } = req.params;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    const deleted = await updateService.deletePost({
+      postId: id,
+      user
+    });
+
+    if (!deleted) {
+      return res.status(403).send('Not allowed');
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('postDeleted', { postId: id });
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('DELETE POST ERROR:', err.message);
+    res.status(500).send('Failed to delete post');
+  }
+};
+
+
+/**
+ * DELETE COMMENT
+ */
+exports.deleteComment = async (req, res) => {
+  try {
+    const user = req.session.user;
+    const { id } = req.params;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    const deleted = await updateService.deleteComment({
+      commentId: id,
+      user
+    });
+
+    if (!deleted) {
+      return res.status(403).send('Not allowed');
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('commentDeleted', { commentId: id });
+    }
+
+    res.json({ success: true });
+
+  } catch (err) {
+    console.error('DELETE COMMENT ERROR:', err.message);
+    res.status(500).send('Failed to delete comment');
   }
 };
