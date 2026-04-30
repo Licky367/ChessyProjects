@@ -1,9 +1,11 @@
+// controllers/updateController.js
+
 const updateService = require('../services/updateService');
+
 
 /**
  * ===========================
- * VIEW DAIRY PROJECTS (POSITIVE CODES ONLY)
- * renders: dairyProjects.ejs
+ * VIEW DAIRY PROJECTS
  * ===========================
  */
 exports.viewDairyProjects = async (req, res) => {
@@ -25,8 +27,7 @@ exports.viewDairyProjects = async (req, res) => {
 
 /**
  * ===========================
- * VIEW STRUCTURES (NEGATIVE CODES ONLY)
- * renders: structures.ejs
+ * VIEW STRUCTURES
  * ===========================
  */
 exports.viewStructures = async (req, res) => {
@@ -48,8 +49,7 @@ exports.viewStructures = async (req, res) => {
 
 /**
  * ===========================
- * VIEW DAIRY PROFILE PAGE
- * renders: update.ejs
+ * VIEW PROFILE PAGE
  * ===========================
  */
 exports.viewPage = async (req, res) => {
@@ -94,9 +94,6 @@ exports.comment = async (req, res) => {
       comment
     });
 
-    /**
-     * SOCKET EMISSION
-     */
     const io = req.app.get('io');
     if (io) {
       io.to(id).emit('commentAdded', {
@@ -118,7 +115,7 @@ exports.comment = async (req, res) => {
 
 /**
  * ===========================
- * UPDATE IMAGE + LOG UPDATE
+ * UPDATE IMAGE
  * ===========================
  */
 exports.image = async (req, res) => {
@@ -136,9 +133,6 @@ exports.image = async (req, res) => {
       image: req.file.filename
     });
 
-    /**
-     * SOCKET EVENT
-     */
     const io = req.app.get('io');
     if (io) {
       io.to(id).emit('imageUpdated', {
@@ -151,5 +145,83 @@ exports.image = async (req, res) => {
   } catch (err) {
     console.error('IMAGE UPDATE ERROR:', err.message);
     return res.status(500).send('Failed to update image');
+  }
+};
+
+
+/**
+ * ===========================
+ * MARK MEDICAL ATTENTION (dairyWorker only)
+ * ===========================
+ */
+exports.markMedicalAttention = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user || user.role !== 'dairyWorker') {
+      return res.status(403).send('Access denied');
+    }
+
+    const { type, details } = req.body;
+
+    if (!type || !details) {
+      return res.status(400).send('Medical type and details are required');
+    }
+
+    const updated = await updateService.markMedicalAttention({
+      dairyId: id,
+      userId: user._id,
+      type: type.trim(),
+      details: details.trim()
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(id).emit('medicalMarked', {
+        type: updated.medicalAttention.type,
+        details: updated.medicalAttention.details
+      });
+    }
+
+    return res.redirect(`/dairy/${id}`);
+
+  } catch (err) {
+    console.error('MEDICAL MARK ERROR:', err.message);
+    return res.status(500).send('Failed to mark medical attention');
+  }
+};
+
+
+/**
+ * ===========================
+ * UNMARK MEDICAL ATTENTION (admin only)
+ * ===========================
+ */
+exports.unmarkMedicalAttention = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user || user.role !== 'admin') {
+      return res.status(403).send('Access denied');
+    }
+
+    const updated = await updateService.unmarkMedicalAttention({
+      dairyId: id
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(id).emit('medicalUnmarked', {
+        cleared: true
+      });
+    }
+
+    return res.redirect(`/dairy/${id}`);
+
+  } catch (err) {
+    console.error('MEDICAL UNMARK ERROR:', err.message);
+    return res.status(500).send('Failed to unmark medical attention');
   }
 };
