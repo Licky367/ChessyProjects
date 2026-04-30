@@ -4,12 +4,18 @@ const mongoose = require('mongoose');
 
 const dairySchema = new mongoose.Schema(
   {
+    // =========================
+    // PROFILE IMAGE
+    // =========================
     profileImage: {
       type: String,
       trim: true,
       default: ''
     },
 
+    // =========================
+    // UNIQUE CODE
+    // =========================
     code: {
       type: Number,
       required: true,
@@ -20,20 +26,29 @@ const dairySchema = new mongoose.Schema(
       }
     },
 
+    // =========================
+    // NAME
+    // =========================
     name: {
       type: String,
       required: true,
       trim: true
     },
 
+    // =========================
+    // DATE OF BIRTH
+    // =========================
     dob: {
       type: Date,
       required: function () {
-        return this.code >= 0; // Required only for animals (0 or positive code)
+        return this.code >= 0; // Only real animals require DOB
       },
       default: null
     },
 
+    // =========================
+    // MASS
+    // =========================
     mass: {
       type: Number,
       required: true,
@@ -41,20 +56,19 @@ const dairySchema = new mongoose.Schema(
       default: 0
     },
 
+    // =========================
+    // MILKING STATUS
+    // =========================
     isMilking: {
       type: Boolean,
       default: false,
       validate: {
         validator: function (value) {
-          // Only female animals can be marked as milking
-          if (value === true && this.code >= 0 && this.code % 2 !== 0) {
-            return false;
-          }
+          // Facilities (negative code) cannot be milked
+          if (value && this.code < 0) return false;
 
-          // Facilities / negative codes cannot be milked
-          if (value === true && this.code < 0) {
-            return false;
-          }
+          // Only FEMALES (even codes) can be milked
+          if (value && this.code >= 0 && this.code % 2 !== 0) return false;
 
           return true;
         },
@@ -64,15 +78,60 @@ const dairySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+
+    // allow virtuals in JSON & EJS
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 );
 
-// Virtual gender field based on code
+
+// =========================
+// VIRTUALS
+// =========================
+
+// Gender (derived from code)
 dairySchema.virtual('gender').get(function () {
-  if (this.code < 0) return null; // Facilities / no gender
+  if (this.code < 0) return null;
   return this.code % 2 === 0 ? 'Female' : 'Male';
 });
 
+// Boolean helpers (VERY IMPORTANT for your service/UI)
+dairySchema.virtual('isFemale').get(function () {
+  return this.code >= 0 && this.code % 2 === 0;
+});
+
+dairySchema.virtual('hasIdentity').get(function () {
+  return this.code >= 0;
+});
+
+
+// =========================
+// PRE-SAVE HOOK (DATA SAFETY)
+// =========================
+dairySchema.pre('save', function (next) {
+
+  // If not female → force isMilking false
+  if (!this.isFemale) {
+    this.isMilking = false;
+  }
+
+  // If facility → remove DOB
+  if (this.code < 0) {
+    this.dob = null;
+  }
+
+  next();
+});
+
+
+// =========================
+// INDEXES (PERFORMANCE)
+// =========================
+dairySchema.index({ code: 1 }, { unique: true });
+
+
+// =========================
+// EXPORT
+// =========================
 module.exports = mongoose.model('Dairy', dairySchema);
