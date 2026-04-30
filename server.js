@@ -4,26 +4,47 @@ const path = require("path");
 const mongoose = require("mongoose");
 const expressLayouts = require("express-ejs-layouts");
 const session = require("express-session");
+const { Server } = require("socket.io");
 
 // ROUTES
 const createRoutes = require("./routes/create");
 const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
 
-// INIT APP
-const app = express();
-const server = http.createServer(app); // IMPORTANT for socket later
+// SOCKET HANDLER
+const socketHandler = require("./socket/socket");
 
-// ===== DATABASE =====
+// INIT APP + SERVER
+const app = express();
+const server = http.createServer(app);
+
+// INIT SOCKET.IO
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+// PASS IO TO SOCKET FILE
+socketHandler(io);
+
+// ======================
+// DATABASE
+// ======================
 mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
   .then(() => console.log("MongoDB Connected"))
   .catch(err => console.log("MongoDB Error:", err));
 
-// ===== MIDDLEWARE =====
+// ======================
+// MIDDLEWARE
+// ======================
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ===== SESSION =====
+// ======================
+// SESSION
+// ======================
 app.use(session({
   secret: "secret-key",
   resave: false,
@@ -34,35 +55,45 @@ app.use(session({
   }
 }));
 
-// expose user globally
+// expose user globally in EJS
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
 
-// ===== STATIC FILES =====
+// ======================
+// STATIC FILES
+// ======================
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// ===== VIEW ENGINE =====
+// ======================
+// VIEW ENGINE
+// ======================
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// ===== LAYOUTS =====
+// layout system
 app.use(expressLayouts);
 app.set("layout", "layout");
 
-// ===== ROUTES =====
+// ======================
+// ROUTES
+// ======================
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 
-// ===== HOME REDIRECT =====
+// ======================
+// HOME
+// ======================
 app.get("/", (req, res) => {
   res.redirect("/create-invite");
 });
 
-// ===== 404 HANDLER =====
+// ======================
+// 404 HANDLER
+// ======================
 app.use((req, res) => {
   res.status(404).render("layout", {
     title: "Not Found",
@@ -70,7 +101,9 @@ app.use((req, res) => {
   });
 });
 
-// ===== START SERVER =====
+// ======================
+// START SERVER
+// ======================
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
