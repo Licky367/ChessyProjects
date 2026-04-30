@@ -40,7 +40,7 @@ function formatDate(date) {
 
 
 // =========================
-// FORMAT DAIRY (PROFILE PAGE)
+// FORMAT DAIRY
 // =========================
 exports.formatDairy = (dairy, imageUpdates = []) => {
 
@@ -72,7 +72,10 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     ageText: hasIdentity ? calculateAge(dairy.dob) : null,
 
     isMilking: dairy.isMilking,
-    isMilkingText: dairy.isMilking ? 'Being Milked' : 'Not Milked'
+    isMilkingText: dairy.isMilking ? 'Being Milked' : 'Not Milked',
+
+    // 🔥 NEW
+    medicalAttention: dairy.medicalAttention || null
   };
 };
 
@@ -81,7 +84,6 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
 // FORMAT COMMENTS
 // =========================
 exports.formatUpdates = (updates = []) => {
-
   return updates
     .filter(u => u.comment && u.type === 'comment')
     .map(u => ({
@@ -93,7 +95,7 @@ exports.formatUpdates = (updates = []) => {
 
 
 // =========================
-// GET PROFILE PAGE DATA
+// PROFILE PAGE DATA
 // =========================
 exports.getDairyPage = async (id) => {
 
@@ -116,7 +118,7 @@ exports.getDairyPage = async (id) => {
 
 
 // =========================
-// 🔥 NEW: POSITIVE DAIRIES (PROJECTS)
+// POSITIVE DAIRIES
 // =========================
 exports.getPositiveDairies = async () => {
 
@@ -133,7 +135,7 @@ exports.getPositiveDairies = async () => {
 
 
 // =========================
-// 🔥 NEW: NEGATIVE DAIRIES (STRUCTURES)
+// NEGATIVE DAIRIES
 // =========================
 exports.getNegativeDairies = async () => {
 
@@ -184,4 +186,58 @@ exports.updateImage = async ({ dairyId, userId, image }) => {
     image,
     type: 'image'
   });
+};
+
+
+// =========================
+// 🚑 MARK MEDICAL ATTENTION
+// =========================
+exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
+
+  if (!type || !details) {
+    throw new Error('Medical type and details required');
+  }
+
+  const dairy = await Dairy.findById(dairyId);
+
+  if (!dairy) throw new Error('Dairy not found');
+
+  if (dairy.medicalAttention?.isMarked) {
+    throw new Error('Already marked for medical attention');
+  }
+
+  dairy.medicalAttention = {
+    isMarked: true,
+    type,
+    details,
+    markedBy: userId,
+    markedAt: new Date()
+  };
+
+  await dairy.save();
+
+  return dairy;
+};
+
+
+// =========================
+// 🚑 UNMARK MEDICAL ATTENTION (ADMIN ONLY)
+// =========================
+exports.unmarkMedicalAttention = async ({ dairyId }) => {
+
+  const dairy = await Dairy.findById(dairyId);
+
+  if (!dairy) throw new Error('Dairy not found');
+
+  dairy.medicalAttention = {
+    isMarked: false,
+    type: '',
+    details: '',
+    markedBy: null,
+    markedAt: null
+  };
+
+  await dairy.save();
+
+  return dairy;
 };
