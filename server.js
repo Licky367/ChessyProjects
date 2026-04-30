@@ -10,6 +10,7 @@ const { Server } = require("socket.io");
 const createRoutes = require("./routes/create");
 const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
+const milkRoutes = require("./routes/milk");
 
 // SOCKET HANDLER
 const socketHandler = require("./socket/socket");
@@ -90,6 +91,7 @@ app.set("layout", "layout");
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
+app.use("/", milkRoutes);
 
 // ======================
 // HOME ROUTE
