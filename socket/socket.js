@@ -1,4 +1,4 @@
-const Update = require('../models/Update');
+const updateService = require('../services/updateService');
 
 module.exports = function (io) {
 
@@ -6,37 +6,40 @@ module.exports = function (io) {
 
     console.log('🔌 User connected:', socket.id);
 
-    /**
-     * JOIN DAIRY ROOM
-     * Each dairy profile has its own room
-     */
+
+    // =========================
+    // JOIN DAIRY ROOM
+    // =========================
     socket.on('joinDairy', (dairyId) => {
+      if (!dairyId) return;
       socket.join(dairyId);
     });
 
-    /**
-     * NEW COMMENT EVENT
-     */
+
+    // =========================
+    // NEW COMMENT (REAL-TIME)
+    // =========================
     socket.on('newComment', async (data) => {
       try {
 
-        const { dairyId, userId, userName, comment } = data;
+        const { dairyId, comment } = data;
+        const user = socket.user; // will be attached from middleware (below)
 
-        // Save to DB
-        const saved = await Update.create({
-          dairy: dairyId,
-          user: userId,
+        if (!user) return;
+
+        const saved = await updateService.addComment({
+          dairyId,
+          userId: user._id,
           comment
         });
 
         const payload = {
           _id: saved._id,
           comment: saved.comment,
-          userName,
-          dateText: saved.createdAt.toDateString()
+          userName: user.name,
+          dateText: new Date(saved.createdAt).toLocaleString()
         };
 
-        // Broadcast to everyone in same dairy room
         io.to(dairyId).emit('commentAdded', payload);
 
       } catch (err) {
@@ -44,9 +47,29 @@ module.exports = function (io) {
       }
     });
 
+
+    // =========================
+    // IMAGE UPDATE BROADCAST
+    // =========================
+    socket.on('imageUpdated', async (data) => {
+      try {
+
+        const { dairyId, image } = data;
+
+        io.to(dairyId).emit('imageChanged', {
+          image
+        });
+
+      } catch (err) {
+        console.error('Socket image error:', err.message);
+      }
+    });
+
+
     socket.on('disconnect', () => {
       console.log('❌ User disconnected:', socket.id);
     });
 
   });
+
 };
