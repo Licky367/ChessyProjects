@@ -1,0 +1,185 @@
+<% layout('layout', { title: 'Milk Statistics' }) %>
+
+<style>
+.page{ max-width:1100px; margin:auto; }
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.05);
+  margin-bottom:20px;
+}
+
+.filters{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-bottom:15px;
+}
+
+button, select, input{
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #ddd;
+}
+
+.primary{
+  background:#0b5d1e;
+  color:white;
+  border:none;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td{
+  padding:10px;
+  border-bottom:1px solid #eee;
+}
+
+th{ background:#f8f9fa; }
+
+.summary{
+  display:flex;
+  gap:20px;
+  flex-wrap:wrap;
+  margin-top:15px;
+}
+
+.box{
+  background:#f8f9fa;
+  padding:15px;
+  border-radius:10px;
+  min-width:150px;
+}
+</style>
+
+
+<div class="page">
+
+  <!-- FILTER -->
+  <div class="card">
+    <form method="GET" action="/milk/stats" class="filters">
+
+      <select name="type">
+        <option value="day" <%= type==='day'?'selected':'' %>>Daily</option>
+        <option value="month" <%= type==='month'?'selected':'' %>>Monthly</option>
+        <option value="custom" <%= type==='custom'?'selected':'' %>>Custom</option>
+      </select>
+
+      <input type="date" name="date" value="<%= date || '' %>">
+      <input type="month" name="month" value="<%= month || '' %>">
+
+      <button class="primary">Filter</button>
+    </form>
+  </div>
+
+
+  <!-- TABLE -->
+  <div class="card">
+
+    <% if (type === 'day') { %>
+
+      <h3>Daily Production</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Liters</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% records.forEach(r => { %>
+            <tr>
+              <td><%= r.dairy.code %></td>
+              <td><%= r.dairy.name %></td>
+              <td><%= r.liters %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="box">Total: <b><%= stats.total %> L</b></div>
+        <div class="box">Consumed: <b><%= stats.consumed %> L</b></div>
+        <div class="box">Available: <b><%= stats.available %> L</b></div>
+        <div class="box">Cash: <b>KES <%= stats.cash %></b></div>
+      </div>
+
+      <!-- DAILY INPUT -->
+      <% if (!stats.locked) { %>
+      <form method="POST" action="/milk/stats/day">
+
+        <input type="hidden" name="date" value="<%= date %>">
+
+        <div class="summary">
+          <div>
+            <label>Consumed (L)</label>
+            <input type="number" step="0.1" name="consumed" required>
+          </div>
+
+          <div>
+            <label>Price per Liter (KES)</label>
+            <input type="number" step="0.1" name="price" required>
+          </div>
+        </div>
+
+        <button class="primary">Save Daily Stats</button>
+      </form>
+      <% } else { %>
+        <p style="color:red;margin-top:10px;">
+          Daily stats already recorded. Editing disabled.
+        </p>
+      <% } %>
+
+    <% } %>
+
+
+    <% if (type === 'month') { %>
+
+      <h3>Monthly Report</h3>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Total (L)</th>
+            <th>Average</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% records.forEach(r => { %>
+            <tr>
+              <td><%= r.dairy.code %></td>
+              <td><%= r.dairy.name %></td>
+              <td><%= r.total %></td>
+              <td><%= r.avg.toFixed(2) %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <div class="summary">
+        <div class="box">Total: <b><%= stats.total %> L</b></div>
+        <div class="box">Average: <b><%= stats.avg %> L</b></div>
+        <div class="box">Cash: <b>KES <%= stats.cash %></b></div>
+      </div>
+
+    <% } %>
+
+
+    <% if (type === 'custom') { %>
+      <h3>Custom Report</h3>
+      <p>Select a date or month above.</p>
+    <% } %>
+
+  </div>
+
+</div>
