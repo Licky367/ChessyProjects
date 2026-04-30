@@ -7,24 +7,13 @@
 <!-- PROFILE TOP -->
 <div class="profile-top">
 
-<!-- LEFT -->
 <div class="profile-left">
-
-<img
-src="<%= dairy.displayImage %>"
-alt="<%= dairy.name %>"
-id="profilePreview"
-class="avatar-img"
->
-
+<img src="<%= dairy.displayImage %>" class="avatar-img">
 </div>
 
-<!-- RIGHT -->
 <div class="profile-right">
 
-<div class="name-row">
 <h2>
-
 <% if (user?.role === 'admin') { %>
 <span class="editable" data-field="name" data-value="<%= dairy.name %>">
 <%= dairy.name %>
@@ -32,13 +21,10 @@ class="avatar-img"
 <% } else { %>
 <%= dairy.name %>
 <% } %>
-
 </h2>
-</div>
 
 <div class="meta">
 <strong>Code:</strong>
-
 <% if (user?.role === 'admin') { %>
 <span class="editable" data-field="code" data-value="<%= dairy.code %>">
 <%= dairy.code %>
@@ -46,7 +32,6 @@ class="avatar-img"
 <% } else { %>
 <%= dairy.code %>
 <% } %>
-
 </div>
 
 <% if (dairy.hasIdentity) { %>
@@ -56,39 +41,29 @@ class="avatar-img"
 
 <div class="meta">
 <strong>Mass:</strong>
-
 <% if (user?.role === 'admin') { %>
-<span class="editable" data-field="mass" data-value="<%= dairy.mass %>">
-<%= dairy.mass %>
-</span>
+<span class="editable" data-field="mass"><%= dairy.mass %></span>
 <% } else { %>
 <%= dairy.mass %>
 <% } %>
-
 Kgs
 </div>
 
 <% if (dairy.isFemale) { %>
 <div class="meta">
-
 <strong>Status:</strong>
 
 <% if (user?.role === 'admin') { %>
-
 <label>
-<input type="checkbox" id="milkingToggle" <%= dairy.isMilking ? 'checked' : '' %>>
-
-<span id="milkBadge" class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
-<%= dairy.isMilkingText %>
-</span>
-</label>
-
-<% } else { %>
-
+<input type="checkbox" <%= dairy.isMilking ? 'checked' : '' %>>
 <span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
 <%= dairy.isMilkingText %>
 </span>
-
+</label>
+<% } else { %>
+<span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+<%= dairy.isMilkingText %>
+</span>
 <% } %>
 
 </div>
@@ -97,7 +72,6 @@ Kgs
 </div>
 </div>
 
-<!-- DELETE -->
 <% if (user?.role === 'admin') { %>
 <div class="actions">
 <form action="/dairy/<%= dairy._id %>?_method=DELETE" method="POST">
@@ -107,12 +81,11 @@ Kgs
 <% } %>
 
 </div>
-
 </div>
 
 
 <!-- ========================= -->
-<!-- 🟥 MEDICAL FEED (NEW ADDITION) -->
+<!-- 🟥 MEDICAL FEED -->
 <!-- ========================= -->
 
 <% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
@@ -141,174 +114,116 @@ Kgs
     </div>
   </div>
 
+  <!-- ✅ ACTION BAR -->
+  <div class="feed-actions">
+    <span onclick="toggleComments()">💬 
+      <span id="commentCount"><%= updates.length %></span>
+    </span>
+  </div>
+
+  <!-- ✅ INLINE COMMENTS -->
+  <div id="commentSection" class="comment-section">
+
+    <div id="commentsContainer">
+
+      <% if (updates.length) { %>
+        <% updates.forEach(item => { %>
+          <div class="comment-item">
+            <strong><%= item.userName %></strong><br>
+            <%= item.comment %><br>
+            <small><%= item.dateText %></small>
+          </div>
+        <% }) %>
+      <% } else { %>
+        <p id="noComments">No comments yet.</p>
+      <% } %>
+
+    </div>
+
+    <% if (user) { %>
+    <form id="commentForm" class="comment-box">
+      <textarea name="comment" id="commentInput" rows="2" required></textarea>
+      <button class="btn btn-primary">Post</button>
+    </form>
+    <% } %>
+
+  </div>
+
 </div>
 
 <% } %>
 
 
 <!-- ========================= -->
-<!-- IMAGE ACTION SHEET -->
-<!-- ========================= -->
-<div class="fb-sheet" id="imageSheet">
-
-<button onclick="openGallery()">👁 View Photo</button>
-
-<% if (user?.role === 'admin') { %>
-
-<button onclick="document.getElementById('imageInput').click()">
-📷 Change Photo
-</button>
-
-<form action="/dairy/<%= dairy._id %>/image?_method=DELETE" method="POST">
-<button type="submit">🗑 Delete Photo</button>
-</form>
-
-<% } %>
-
-<button onclick="closeSheet()">Cancel</button>
-
-</div>
-
-
-<!-- ========================= -->
-<!-- GALLERY MODAL -->
-<!-- ========================= -->
-<div class="modal fade" id="viewImageModal" tabindex="-1">
-<div class="modal-dialog modal-dialog-centered modal-xl">
-<div class="modal-content border-0">
-
-<div class="gallery-box">
-
-<button class="gallery-nav gallery-prev" onclick="prevImage()">‹</button>
-
-<img id="galleryImage" class="gallery-img" src="">
-
-<button class="gallery-nav gallery-next" onclick="nextImage()">›</button>
-
-<button
-class="btn btn-light rounded-circle"
-style="position:absolute;bottom:20px;right:20px;width:55px;height:55px;"
-data-bs-toggle="modal"
-data-bs-target="#commentsModal"
->
-💬
-</button>
-
-</div>
-</div>
-</div>
-</div>
-
-
-<!-- ========================= -->
-<!-- COMMENTS MODAL -->
-<!-- ========================= -->
-<div class="modal fade" id="commentsModal" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-
-<div class="modal-header">
-<h5 class="modal-title">Comments</h5>
-<button class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<div class="modal-body">
-
-<div id="commentsContainer">
-
-<% if (updates.length) { %>
-
-<% updates.forEach(item => { %>
-<div class="comment-item">
-<strong><%= item.userName %></strong><br>
-<%= item.comment %><br>
-<small><%= item.dateText %></small>
-</div>
-<% }) %>
-
-<% } else { %>
-<p id="noComments">No comments yet.</p>
-<% } %>
-
-</div>
-
-<% if (user) { %>
-<form id="commentForm" class="comment-box">
-<textarea name="comment" id="commentInput" rows="2" required></textarea>
-<button class="btn btn-primary">Post</button>
-</form>
-<% } %>
-
-</div>
-</div>
-</div>
-</div>
-
-
-<!-- ========================= -->
-<!-- IMAGE UPLOAD -->
-<!-- ========================= -->
-<form
-id="uploadForm"
-action="/dairy/<%= dairy._id %>/image?_method=PUT"
-method="POST"
-enctype="multipart/form-data"
-style="display:none;"
->
-<input type="file" name="profileImage" id="imageInput"
-accept="image/*"
-onchange="document.getElementById('uploadForm').submit()">
-</form>
-
-
-<!-- ========================= -->
-<!-- STYLES (MEDICAL FEED) -->
+<!-- STYLES -->
 <!-- ========================= -->
 <style>
 
 .medical-feed-card{
-  background:#fff;
-  border-left:5px solid #c62828;
-  border-radius:10px;
-  padding:12px;
-  margin-top:15px;
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
+background:#fff;
+border-left:5px solid #c62828;
+border-radius:10px;
+padding:12px;
+margin-top:15px;
+box-shadow:0 4px 10px rgba(0,0,0,.08);
 }
 
 .feed-header{
-  display:flex;
-  align-items:center;
-  gap:10px;
+display:flex;
+gap:10px;
 }
 
 .feed-avatar img{
-  width:40px;
-  height:40px;
-  border-radius:50%;
-}
-
-.feed-meta strong{
-  font-size:14px;
-}
-
-.feed-time{
-  font-size:12px;
-  color:#777;
-}
-
-.feed-body{
-  margin-top:10px;
+width:40px;height:40px;border-radius:50%;
 }
 
 .feed-title{
-  font-weight:bold;
-  color:#c62828;
-  margin-bottom:5px;
+color:#c62828;font-weight:bold;
 }
 
-.feed-content{
-  font-size:13px;
-  color:#333;
+.feed-actions{
+margin-top:10px;
+border-top:1px solid #eee;
+padding-top:8px;
+cursor:pointer;
+color:#555;
+}
+
+.comment-section{
+max-height:0;
+overflow:hidden;
+transition:.3s ease;
+}
+
+.comment-section.active{
+max-height:400px;
+margin-top:10px;
+}
+
+.comment-item{
+padding:6px 0;
+border-bottom:1px solid #eee;
+font-size:13px;
+}
+
+.comment-box{
+display:flex;
+gap:8px;
+margin-top:8px;
+}
+
+.comment-box textarea{
+flex:1;
+padding:6px;
+resize:none;
+}
+
+.comment-box button{
+background:#0b5d1e;
+color:#fff;
+border:none;
+padding:6px 10px;
+border-radius:6px;
 }
 
 </style>
@@ -324,7 +239,13 @@ const socket = io();
 
 socket.emit("joinDairy", dairyId);
 
-/* COMMENTS */
+/* TOGGLE COMMENTS */
+function toggleComments(){
+const section = document.getElementById("commentSection");
+section.classList.toggle("active");
+}
+
+/* COMMENTS REALTIME */
 socket.on("commentAdded", (data) => {
 const container = document.getElementById("commentsContainer");
 
@@ -338,10 +259,13 @@ ${data.comment}<br>
 `;
 
 container.prepend(div);
+
+/* UPDATE COUNT */
+const count = document.getElementById("commentCount");
+count.textContent = parseInt(count.textContent) + 1;
 });
 
-
-/* 🟥 MEDICAL MARKED */
+/* MEDICAL MARKED */
 socket.on("medicalMarked", (data) => {
 
 let feed = document.getElementById("medicalFeed");
@@ -356,7 +280,6 @@ if (!feed) {
       <div class="feed-avatar">
         <img src="https://ui-avatars.com/api/?name=${data.userName || 'System'}&background=c62828&color=fff">
       </div>
-
       <div class="feed-meta">
         <strong>${data.userName || 'System Update'}</strong>
         <div class="feed-time">Just now</div>
@@ -370,6 +293,14 @@ if (!feed) {
         <strong>Details:</strong> ${data.details}
       </div>
     </div>
+
+    <div class="feed-actions">
+      💬 <span id="commentCount">0</span>
+    </div>
+
+    <div id="commentSection" class="comment-section">
+      <div id="commentsContainer"></div>
+    </div>
   `;
 
   document.querySelector(".container").prepend(div);
@@ -377,8 +308,7 @@ if (!feed) {
 
 });
 
-
-/* 🟥 MEDICAL UNMARKED */
+/* MEDICAL UNMARKED */
 socket.on("medicalUnmarked", () => {
 const feed = document.getElementById("medicalFeed");
 if (feed) feed.remove();
