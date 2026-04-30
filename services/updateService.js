@@ -74,25 +74,25 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     isMilking: dairy.isMilking,
     isMilkingText: dairy.isMilking ? 'Being Milked' : 'Not Milked',
 
-    // 🔥 ALWAYS NORMALIZED
     medicalAttention: {
       isMarked: dairy?.medicalAttention?.isMarked || false,
       type: dairy?.medicalAttention?.type || '',
       details: dairy?.medicalAttention?.details || '',
-      markedAt: dairy?.medicalAttention?.markedAt || null
+      markedAt: dairy?.medicalAttention?.markedAt || null,
+      likes: dairy?.medicalAttention?.likes || 0 // ✅ NEW
     }
   };
 };
 
 
 /* =========================
-   FORMAT COMMENTS (UPGRADED)
+   FORMAT COMMENTS (MEDICAL)
 ========================= */
 exports.formatUpdates = (updates = []) => {
   return updates
     .filter(u => u.comment && u.type === 'comment')
     .map(u => ({
-      _id: u._id, // 🔥 IMPORTANT (needed for UI)
+      _id: u._id,
       comment: u.comment,
       userName: u.user?.name || 'User',
       dateText: formatDate(u.createdAt),
@@ -102,7 +102,31 @@ exports.formatUpdates = (updates = []) => {
 
 
 /* =========================
-   PROFILE PAGE DATA (OPTIMIZED)
+   FORMAT POSTS (NEW)
+========================= */
+exports.formatPosts = (posts = []) => {
+  return posts.map(p => ({
+    _id: p._id,
+    userId: p.user,
+    userName: p.userName,
+    text: p.text || '',
+    image: p.image || null,
+    likes: p.likes?.length || 0,
+    comments: (p.comments || []).map(c => ({
+      _id: c._id,
+      userId: c.userId,
+      userName: c.userName,
+      text: c.text,
+      dateText: formatDate(c.createdAt)
+    })),
+    createdAt: p.createdAt,
+    dateText: formatDate(p.createdAt)
+  }));
+};
+
+
+/* =========================
+   PROFILE PAGE DATA
 ========================= */
 exports.getDairyPage = async (id) => {
 
@@ -113,28 +137,139 @@ exports.getDairyPage = async (id) => {
     .populate('user', 'name')
     .sort({ createdAt: -1 });
 
-  const imageUpdates = updates.filter(
-    u => u.type === 'image' && u.image
-  );
+  const imageUpdates = updates.filter(u => u.type === 'image');
 
   const comments = exports.formatUpdates(updates);
+
+  const postsRaw = updates
+    .filter(u => u.type === 'post')
+    .sort((a, b) => b.createdAt - a.createdAt);
+
+  const posts = exports.formatPosts(postsRaw);
 
   return {
     dairy: exports.formatDairy(dairy, imageUpdates),
     updates: comments,
-    commentCount: comments.length // 🔥 NEW (for instant UI count)
+    posts,
+    commentCount: comments.length
   };
 };
 
 
 /* =========================
-   POSITIVE DAIRIES
+   CREATE POST
 ========================= */
+exports.createPost = async ({ dairyId, userId, userName, text, image }) => {
+
+  const post = await Update.create({
+    dairy: dairyId,
+    user: userId,
+    userName,
+    text,
+    image,
+    type: 'post',
+    likes: [],
+    comments: []
+  });
+
+  return post;
+};
+
+
+/* =========================
+   TOGGLE LIKE
+========================= */
+exports.toggleLike = async ({ postId, userId }) => {
+
+  const post = await Update.findById(postId);
+  if (!post) throw new Error('Post not found');
+
+  const index = post.likes.findIndex(id => id.toString() === userId.toString());
+
+  if (index > -1) {
+    post.likes.splice(index, 1);
+  } else {
+    post.likes.push(userId);
+  }
+
+  await post.save();
+
+  return { likes: post.likes.length };
+};
+
+
+/* =========================
+   ADD POST COMMENT
+========================= */
+exports.addPostComment = async ({ postId, userId, userName, text }) => {
+
+  const post = await Update.findById(postId);
+  if (!post) throw new Error('Post not found');
+
+  const comment = {
+    _id: new Date().getTime().toString(),
+    userId,
+    userName,
+    text,
+    createdAt: new Date()
+  };
+
+  post.comments.push(comment);
+  await post.save();
+
+  return comment;
+};
+
+
+/* =========================
+   DELETE POST
+========================= */
+exports.deletePost = async ({ postId, user }) => {
+
+  const post = await Update.findById(postId);
+  if (!post) return false;
+
+  const isOwner = post.user.toString() === user._id.toString();
+  const isAdmin = user.role === 'admin';
+
+  if (!isOwner && !isAdmin) return false;
+
+  await post.deleteOne();
+
+  return true;
+};
+
+
+/* =========================
+   DELETE COMMENT
+========================= */
+exports.deleteComment = async ({ commentId, user }) => {
+
+  const post = await Update.findOne({ "comments._id": commentId });
+  if (!post) return false;
+
+  const comment = post.comments.id(commentId);
+  if (!comment) return false;
+
+  const isOwner = comment.userId.toString() === user._id.toString();
+  const isPostOwner = post.user.toString() === user._id.toString();
+  const isAdmin = user.role === 'admin';
+
+  if (!isOwner && !isPostOwner && !isAdmin) return false;
+
+  comment.remove();
+  await post.save();
+
+  return true;
+};
+
+
+/* =========================
+   EXISTING METHODS
+========================= */
+
 exports.getPositiveDairies = async () => {
-
-  const dairies = await Dairy.find({ code: { $gt: 0 } })
-    .sort({ createdAt: -1 });
-
+  const dairies = await Dairy.find({ code: { $gt: 0 } }).sort({ createdAt: -1 });
   return dairies.map(d => ({
     _id: d._id,
     name: d.name,
@@ -143,15 +278,8 @@ exports.getPositiveDairies = async () => {
   }));
 };
 
-
-/* =========================
-   NEGATIVE DAIRIES
-========================= */
 exports.getNegativeDairies = async () => {
-
-  const dairies = await Dairy.find({ code: { $lt: 0 } })
-    .sort({ createdAt: -1 });
-
+  const dairies = await Dairy.find({ code: { $lt: 0 } }).sort({ createdAt: -1 });
   return dairies.map(d => ({
     _id: d._id,
     name: d.name,
@@ -160,36 +288,20 @@ exports.getNegativeDairies = async () => {
   }));
 };
 
-
-/* =========================
-   ADD COMMENT (UPGRADED)
-========================= */
 exports.addComment = async ({ dairyId, userId, comment }) => {
-
   const clean = comment?.trim();
   if (!clean) throw new Error('Comment is required');
 
-  const created = await Update.create({
+  return Update.create({
     dairy: dairyId,
     user: userId,
     comment: clean,
     type: 'comment'
   });
-
-  return created; // 🔥 return full doc (controller formats)
 };
 
-
-/* =========================
-   UPDATE IMAGE
-========================= */
 exports.updateImage = async ({ dairyId, userId, image }) => {
-
-  if (!image) throw new Error('Image is required');
-
-  await Dairy.findByIdAndUpdate(dairyId, {
-    profileImage: image
-  });
+  await Dairy.findByIdAndUpdate(dairyId, { profileImage: image });
 
   return Update.create({
     dairy: dairyId,
@@ -199,60 +311,30 @@ exports.updateImage = async ({ dairyId, userId, image }) => {
   });
 };
 
-
-/* =========================
-   🚑 MARK MEDICAL ATTENTION
-========================= */
 exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
-
-  if (!type || !details) {
-    throw new Error('Medical type and details required');
-  }
-
   const dairy = await Dairy.findById(dairyId);
-  if (!dairy) throw new Error('Dairy not found');
+  if (!dairy) throw new Error('Not found');
 
   dairy.medicalAttention = {
     isMarked: true,
-    type: type.trim(),
-    details: details.trim(),
+    type,
+    details,
     markedBy: userId,
-    markedAt: new Date(),
-    updatedAt: new Date()
+    markedAt: new Date()
   };
 
   await dairy.save();
-
-  // 🔥 OPTIONAL: ALSO LOG AS UPDATE (future feed expansion)
-  await Update.create({
-    dairy: dairyId,
-    user: userId,
-    type: 'medical',
-    comment: `Marked medical: ${type}`
-  });
-
   return dairy;
 };
 
-
-/* =========================
-   🚑 UNMARK MEDICAL ATTENTION
-========================= */
 exports.unmarkMedicalAttention = async ({ dairyId }) => {
-
   const dairy = await Dairy.findById(dairyId);
-  if (!dairy) throw new Error('Dairy not found');
+  if (!dairy) throw new Error('Not found');
 
   dairy.medicalAttention = {
-    isMarked: false,
-    type: '',
-    details: '',
-    markedBy: null,
-    markedAt: null,
-    updatedAt: new Date()
+    isMarked: false
   };
 
   await dairy.save();
-
   return dairy;
 };
