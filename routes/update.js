@@ -1,38 +1,68 @@
+// routes/update.js
+
 const express = require('express');
 const router = express.Router();
 
 const controller = require('../controllers/updateController');
-const upload = require('../middleware/uploadMiddleware'); // FIXED PATH
+const upload = require('../middleware/uploadMiddleware');
 
 /**
  * OPTIONAL AUTH MIDDLEWARE WRAPPER
- * (safe fallback since you're using sessions)
  */
 function isAuth(req, res, next) {
   if (!req.session.user) {
     return res.status(401).send("Unauthorized");
   }
 
-  req.user = req.session.user; // align with controller expectation
+  req.user = req.session.user;
   next();
 }
 
 /**
+ * ===========================
+ * LIST PAGES
+ * ===========================
+ */
+
+/**
+ * VIEW DAIRY PROJECTS (POSITIVE CODES ONLY)
+ * renders: dairyProjects.ejs
+ */
+router.get('/dairyProjects', controller.viewDairyProjects);
+
+/**
+ * VIEW STRUCTURES (NEGATIVE CODES ONLY)
+ * renders: structures.ejs
+ */
+router.get('/structures', controller.viewStructures);
+
+
+/**
+ * ===========================
+ * PROFILE PAGE
+ * ===========================
+ */
+
+/**
  * VIEW DAIRY PROFILE + UPDATES
+ * renders: update.ejs / dairyProfiles.ejs
  */
 router.get('/dairy/:id', controller.viewPage);
 
-/**
- * ADD COMMENT (REAL-TIME READY)
- */
-router.post(
-  '/dairy/:id/comment',
-  isAuth,
-  controller.comment
-);
 
 /**
- * UPDATE IMAGE (UPLOAD + UPDATE LOG)
+ * ===========================
+ * PROFILE ACTIONS
+ * ===========================
+ */
+
+/**
+ * ADD COMMENT
+ */
+router.post('/dairy/:id/comment', isAuth, controller.comment);
+
+/**
+ * UPDATE IMAGE
  */
 router.put(
   '/dairy/:id/image',
