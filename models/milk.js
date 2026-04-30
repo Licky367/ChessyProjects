@@ -1,5 +1,35 @@
 const mongoose = require('mongoose');
 
+
+/* =========================
+   STANDING ORDERS (SUB-SCHEMA)
+========================= */
+const standingOrderSchema = new mongoose.Schema(
+  {
+    customerName: { type: String, required: true, trim: true },
+    liters: { type: Number, required: true, min: 0 },
+
+    isActive: { type: Boolean, default: true },
+
+    // 🔥 becomes active tomorrow automatically
+    effectiveDate: {
+      type: Date,
+      default: function () {
+        const d = new Date();
+        d.setDate(d.getDate() + 1);
+        return d;
+      }
+    },
+
+    omitted: { type: Boolean, default: false }
+  },
+  { timestamps: true }
+);
+
+
+/* =========================
+   MAIN MILK SCHEMA
+========================= */
 const milkSchema = new mongoose.Schema(
   {
     dairy: {
@@ -30,16 +60,23 @@ const milkSchema = new mongoose.Schema(
     day: { type: String, index: true },
     month: { type: String, index: true },
 
+
     /* =========================
-       DAILY FINANCIAL STATS
+       DAILY FINANCIAL CORE
     ========================= */
     dailyStats: {
-      consumed: { type: Number, default: 0 },
+      consumed: { type: Number, default: 0 },   // from SALES
       available: { type: Number, default: 0 },
       price: { type: Number, default: 0 },
       cash: { type: Number, default: 0 },
       locked: { type: Boolean, default: false }
-    }
+    },
+
+
+    /* =========================
+       STANDING ORDERS (EMBEDDED)
+    ========================= */
+    standingOrders: [standingOrderSchema]
   },
 
   { timestamps: true }
@@ -47,7 +84,7 @@ const milkSchema = new mongoose.Schema(
 
 
 /* =========================
-   PRE-SAVE DATE NORMALIZATION
+   DATE NORMALIZATION
 ========================= */
 milkSchema.pre('save', function (next) {
   const d = new Date(this.date);
@@ -58,19 +95,47 @@ milkSchema.pre('save', function (next) {
 
 
 /* =========================
-   STATIC: SAVE DAILY STATS
+   GET ACTIVE STANDING ORDERS
+   (FILTERS OUT FUTURE ONES)
+========================= */
+milkSchema.methods.getActiveStandingOrders = function () {
+  const today = new Date().toISOString().split('T')[0];
+
+  return this.standingOrders.filter(o =>
+    !o.omitted &&
+    o.isActive &&
+    o.effectiveDate.toISOString().split('T')[0] <= today
+  );
+};
+
+
+/* =========================
+   OMIT STANDING ORDER
+========================= */
+milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
+  return this.updateOne(
+    { _id: milkId, 'standingOrders._id': orderId },
+    {
+      $set: {
+        'standingOrders.$.omitted': true,
+        'standingOrders.$.isActive': false
+      }
+    }
+  );
+};
+
+
+/* =========================
+   SAVE DAILY STATS (FROM SALES)
 ========================= */
 milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
-  const Milk = this;
+  const existing = await this.findOne({ day, 'dailyStats.locked': true });
 
-  // check if already locked
-  const existing = await Milk.findOne({ day, 'dailyStats.locked': true });
   if (existing) {
-    throw new Error('Daily stats already recorded.');
+    throw new Error('Daily stats already locked.');
   }
 
-  // total milk that day
-  const agg = await Milk.aggregate([
+  const agg = await this.aggregate([
     { $match: { day } },
     { $group: { _id: null, total: { $sum: '$liters' } } }
   ]);
@@ -78,10 +143,9 @@ milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
   const total = agg[0]?.total || 0;
 
   const available = total - consumed;
-  const cash = available * price;
+  const cash = consumed * price; // 🔥 SALES-BASED CASH
 
-  // update ALL records of that day
-  await Milk.updateMany(
+  return this.updateMany(
     { day },
     {
       $set: {
@@ -93,19 +157,16 @@ milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
       }
     }
   );
-
-  return { total, consumed, available, cash };
 };
 
 
 /* =========================
-   STATIC: DAILY REPORT
+   DAILY REPORT
 ========================= */
 milkSchema.statics.getDailyReport = async function (day) {
   const records = await this.find({ day }).populate('dairy');
 
   const total = records.reduce((sum, r) => sum + r.liters, 0);
-
   const stats = records[0]?.dailyStats || {};
 
   return {
@@ -122,11 +183,13 @@ milkSchema.statics.getDailyReport = async function (day) {
 
 
 /* =========================
-   STATIC: MONTHLY REPORT
+   MONTHLY REPORT (FIXED CASH)
 ========================= */
 milkSchema.statics.getMonthlyReport = async function (month) {
-  return this.aggregate([
+
+  const grouped = await this.aggregate([
     { $match: { month } },
+
     {
       $group: {
         _id: '$dairy',
@@ -134,6 +197,7 @@ milkSchema.statics.getMonthlyReport = async function (month) {
         days: { $addToSet: '$day' }
       }
     },
+
     {
       $project: {
         dairy: '$_id',
@@ -144,6 +208,31 @@ milkSchema.statics.getMonthlyReport = async function (month) {
       }
     }
   ]);
+
+
+  /* =========================
+     🔥 CORRECT MONTHLY CASH
+     SUM DAILY CASH (NOT PRICE MULTIPLY)
+  ========================= */
+  const cashAgg = await this.aggregate([
+    { $match: { month } },
+    {
+      $group: {
+        _id: null,
+        totalCash: { $sum: '$dailyStats.cash' }
+      }
+    }
+  ]);
+
+  const cash = cashAgg[0]?.totalCash || 0;
+
+
+  return {
+    records: grouped,
+    stats: {
+      cash
+    }
+  };
 };
 
 
