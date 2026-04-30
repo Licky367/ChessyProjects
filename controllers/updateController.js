@@ -1,46 +1,87 @@
 // controllers/updateController.js
 
-const service = require('../services/updateService');
+const updateService = require('../services/updateService');
 
+/**
+ * VIEW DAIRY UPDATE PAGE
+ */
 exports.viewPage = async (req, res) => {
   try {
-    const data = await service.getDairyPage(req.params.id);
+    const { id } = req.params;
 
-    res.render('update', {
+    const data = await updateService.getDairyPage(id);
+
+    return res.render('update', {
+      title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
-      user: req.user
+      user: req.user || null
     });
 
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('VIEW PAGE ERROR:', err.message);
+    return res.status(500).send('Failed to load dairy profile');
   }
 };
 
+
+/**
+ * ADD COMMENT
+ */
 exports.comment = async (req, res) => {
   try {
-    await service.addComment({
-      dairyId: req.params.id,
+    const { id } = req.params;
+
+    if (!req.user) {
+      return res.status(401).send('Unauthorized');
+    }
+
+    const comment = req.body.comment?.trim();
+
+    if (!comment) {
+      return res.status(400).send('Comment cannot be empty');
+    }
+
+    await updateService.addComment({
+      dairyId: id,
       userId: req.user._id,
-      comment: req.body.comment
+      comment
     });
 
-    res.redirect(`/dairy/${req.params.id}`);
+    return res.redirect(`/dairy/${id}`);
+
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('COMMENT ERROR:', err.message);
+    return res.status(500).send('Failed to post comment');
   }
 };
 
+
+/**
+ * UPDATE IMAGE + CREATE UPDATE LOG
+ */
 exports.image = async (req, res) => {
   try {
-    await service.updateImage({
-      dairyId: req.params.id,
+    const { id } = req.params;
+
+    if (!req.user) {
+      return res.status(401).send('Unauthorized');
+    }
+
+    if (!req.file) {
+      return res.status(400).send('No image uploaded');
+    }
+
+    await updateService.updateImage({
+      dairyId: id,
       userId: req.user._id,
       image: req.file.filename
     });
 
-    res.redirect(`/dairy/${req.params.id}`);
+    return res.redirect(`/dairy/${id}`);
+
   } catch (err) {
-    res.status(500).send(err.message);
+    console.error('IMAGE UPDATE ERROR:', err.message);
+    return res.status(500).send('Failed to update image');
   }
 };
