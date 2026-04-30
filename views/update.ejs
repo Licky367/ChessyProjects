@@ -2,9 +2,12 @@
 
 <div class="container mt-4">
 
+<!-- ========================= -->
+<!-- PROFILE CARD (UNCHANGED) -->
+<!-- ========================= -->
+
 <div class="card">
 
-<!-- PROFILE TOP -->
 <div class="profile-top">
 
 <div class="profile-left">
@@ -53,7 +56,6 @@ Kgs
 </span>
 </div>
 
-<!-- ✅ MILKING HISTORY BUTTON -->
 <div class="meta" style="margin-top:8px;">
 <a href="/milk/history/<%= dairy._id %>" class="btn btn-primary btn-sm">
 🍼 View Milking History
@@ -73,6 +75,109 @@ Kgs
 <% } %>
 
 </div>
+
+
+<!-- ========================= -->
+<!-- 🟦 CREATE POST -->
+<!-- ========================= -->
+
+<% if (user) { %>
+<div class="card mt-3 p-3">
+
+<form id="postForm" enctype="multipart/form-data">
+<textarea 
+id="postText" 
+placeholder="<%= user.name %>, say something about this project..."
+rows="2"
+required
+></textarea>
+
+<input type="file" id="postImage" accept="image/*">
+
+<button type="submit" class="btn btn-success mt-2">Post</button>
+</form>
+
+</div>
+<% } %>
+
+
+<!-- ========================= -->
+<!-- 🟦 GENERAL FEED -->
+<!-- ========================= -->
+
+<div id="postFeed">
+
+<% if (posts && posts.length) { %>
+<% posts.forEach(post => { %>
+
+<div class="feed-card" data-id="<%= post._id %>">
+
+<div class="feed-header">
+<strong><%= post.userName %></strong>
+<small><%= post.dateText %></small>
+
+<% if (
+user && 
+(user._id.toString() === post.userId.toString() || user.role === 'admin')
+) { %>
+<button class="delete-post" data-id="<%= post._id %>">🗑</button>
+<% } %>
+</div>
+
+<div class="feed-body">
+<p><%= post.text %></p>
+
+<% if (post.image) { %>
+<img src="/uploads/<%= post.image %>" class="feed-img">
+<% } %>
+</div>
+
+<div class="feed-actions">
+
+<button class="like-btn" data-id="<%= post._id %>">
+👍 <span class="like-count"><%= post.likes %></span>
+</button>
+
+<button class="toggle-comments">
+💬 <span><%= post.comments.length %></span>
+</button>
+
+</div>
+
+<div class="comment-section">
+
+<% post.comments.forEach(c => { %>
+<div class="comment-item">
+<strong><%= c.userName %></strong><br>
+<%= c.text %>
+
+<% if (
+user &&
+(
+user._id.toString() === c.userId.toString() ||
+user._id.toString() === post.userId.toString() ||
+user.role === 'admin'
+)
+) { %>
+<button class="delete-comment" data-id="<%= c._id %>">❌</button>
+<% } %>
+</div>
+<% }) %>
+
+<% if (user) { %>
+<form class="comment-form" data-id="<%= post._id %>">
+<textarea required></textarea>
+<button type="submit">Post</button>
+</form>
+<% } %>
+
+</div>
+
+</div>
+
+<% }) %>
+<% } %>
+
 </div>
 
 
@@ -84,70 +189,111 @@ Kgs
 
 <div id="medicalFeed" class="medical-feed-card">
 
-  <div class="feed-header">
-    <div class="feed-avatar">
-      <img src="https://ui-avatars.com/api/?name=<%= user?.name || 'System' %>&background=c62828&color=fff">
-    </div>
+<div class="feed-header">
+<div class="feed-avatar">
+<img src="https://ui-avatars.com/api/?name=<%= user?.name || 'System' %>&background=c62828&color=fff">
+</div>
 
-    <div class="feed-meta">
-      <strong><%= user?.name || 'System Update' %></strong>
-      <div class="feed-time">
-        <%= dairy.medicalAttention.markedAt ? new Date(dairy.medicalAttention.markedAt).toLocaleString() : '' %>
-      </div>
-    </div>
-  </div>
+<div class="feed-meta">
+<strong><%= user?.name || 'System Update' %></strong>
+<div class="feed-time">
+<%= new Date(dairy.medicalAttention.markedAt).toLocaleString() %>
+</div>
+</div>
+</div>
 
-  <div class="feed-body">
-    <div class="feed-title">🚨 Medical Attention Required</div>
+<div class="feed-body">
+<div class="feed-title">🚨 Medical Attention Required</div>
 
-    <div class="feed-content">
-      <strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
-      <strong>Details:</strong> <%= dairy.medicalAttention.details %>
-    </div>
-  </div>
+<div class="feed-content">
+<strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
+<strong>Details:</strong> <%= dairy.medicalAttention.details %>
+</div>
+</div>
 
-  <!-- ACTION BAR -->
-  <div class="feed-actions" onclick="toggleComments()">
-    💬 <span id="commentCount"><%= commentCount %></span>
-  </div>
+<div class="feed-actions">
+👍 <span id="medicalLikeCount"><%= dairy.medicalAttention.likes || 0 %></span>
+💬 <span id="commentCount"><%= commentCount %></span>
+</div>
 
-  <!-- COMMENTS -->
-  <div id="commentSection" class="comment-section">
+<div id="commentSection" class="comment-section">
+<div id="commentsContainer">
 
-    <div id="commentsContainer">
+<% updates.forEach(item => { %>
+<div class="comment-item">
+<strong><%= item.userName %></strong><br>
+<%= item.comment %>
+</div>
+<% }) %>
 
-      <% if (updates.length) { %>
-        <% updates.forEach(item => { %>
-          <div class="comment-item">
-            <strong><%= item.userName %></strong><br>
-            <%= item.comment %><br>
-            <small><%= item.dateText %></small>
-          </div>
-        <% }) %>
-      <% } else { %>
-        <p id="noComments">No comments yet.</p>
-      <% } %>
+</div>
 
-    </div>
+<% if (user) { %>
+<form id="commentForm" class="comment-box">
+<textarea id="commentInput" rows="2" required></textarea>
+<button type="submit">Post</button>
+</form>
+<% } %>
 
-    <% if (user) { %>
-    <form id="commentForm" class="comment-box">
-      <textarea id="commentInput" rows="2" required></textarea>
-      <button type="submit">Post</button>
-    </form>
-    <% } %>
-
-  </div>
+</div>
 
 </div>
 
 <% } %>
 
+</div>
+
 
 <!-- ========================= -->
 <!-- STYLES -->
 <!-- ========================= -->
+
 <style>
+
+.feed-card{
+background:#fff;
+padding:12px;
+margin-top:12px;
+border-radius:10px;
+box-shadow:0 3px 8px rgba(0,0,0,.08);
+}
+
+.feed-img{
+width:100%;
+border-radius:8px;
+margin-top:8px;
+}
+
+.feed-actions{
+display:flex;
+gap:10px;
+margin-top:8px;
+}
+
+.feed-actions button{
+border:none;
+background:none;
+cursor:pointer;
+}
+
+.comment-section{
+display:none;
+margin-top:10px;
+}
+
+.comment-section.active{
+display:block;
+}
+
+.delete-post,
+.delete-comment{
+color:red;
+border:none;
+background:none;
+cursor:pointer;
+float:right;
+}
+
 .medical-feed-card{
 background:#fff;
 border-left:5px solid #c62828;
@@ -157,184 +303,87 @@ margin-top:15px;
 box-shadow:0 4px 10px rgba(0,0,0,.08);
 }
 
-.feed-header{display:flex;gap:10px;}
-.feed-avatar img{width:40px;height:40px;border-radius:50%;}
-.feed-title{color:#c62828;font-weight:bold;}
-
-.feed-actions{
-margin-top:10px;
-border-top:1px solid #eee;
-padding-top:8px;
-cursor:pointer;
-color:#555;
-}
-
-.comment-section{
-max-height:0;
-overflow:hidden;
-transition:.3s ease;
-}
-
-.comment-section.active{
-max-height:400px;
-margin-top:10px;
-}
-
-.comment-item{
-padding:6px 0;
-border-bottom:1px solid #eee;
-font-size:13px;
-}
-
-.comment-box{
-display:flex;
-gap:8px;
-margin-top:8px;
-}
-
-.comment-box textarea{
-flex:1;
-padding:6px;
-resize:none;
-}
-
-.comment-box button{
-background:#0b5d1e;
-color:#fff;
-border:none;
-padding:6px 10px;
-border-radius:6px;
-}
 </style>
 
 
 <!-- ========================= -->
-<!-- SOCKET + JS -->
+<!-- JAVASCRIPT -->
 <!-- ========================= -->
+
 <script>
 
 const dairyId = "<%= dairy._id %>";
-const socket = io();
 
-socket.emit("joinDairy", dairyId);
-
-
-/* TOGGLE */
-function toggleComments(){
-const section = document.getElementById("commentSection");
-if(section) section.classList.toggle("active");
-}
-
-
-/* AJAX COMMENT POST */
-const form = document.getElementById("commentForm");
-
-if(form){
-form.addEventListener("submit", async (e)=>{
+/* CREATE POST */
+document.getElementById("postForm")?.addEventListener("submit", async e=>{
 e.preventDefault();
 
-const input = document.getElementById("commentInput");
-const text = input.value.trim();
-if(!text) return;
+const formData = new FormData();
+formData.append("text", document.getElementById("postText").value);
+formData.append("image", document.getElementById("postImage").files[0]);
 
-const res = await fetch(`/dairy/${dairyId}/comment`,{
+await fetch(`/dairy/${dairyId}/post`,{
+method:"POST",
+body:formData
+});
+
+location.reload();
+});
+
+
+/* LIKE */
+document.querySelectorAll(".like-btn").forEach(btn=>{
+btn.addEventListener("click", async ()=>{
+await fetch(`/post/${btn.dataset.id}/like`,{method:"POST"});
+location.reload();
+});
+});
+
+
+/* TOGGLE COMMENTS */
+document.querySelectorAll(".toggle-comments").forEach(btn=>{
+btn.addEventListener("click", ()=>{
+btn.closest(".feed-card")
+.querySelector(".comment-section")
+.classList.toggle("active");
+});
+});
+
+
+/* COMMENT POST */
+document.querySelectorAll(".comment-form").forEach(form=>{
+form.addEventListener("submit", async e=>{
+e.preventDefault();
+
+const postId = form.dataset.id;
+const text = form.querySelector("textarea").value;
+
+await fetch(`/post/${postId}/comment`,{
 method:"POST",
 headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({ comment: text })
+body: JSON.stringify({ text })
 });
 
-if(res.ok){
-input.value = "";
-}
+location.reload();
 });
-}
-
-
-/* REALTIME COMMENT */
-socket.on("commentAdded", (data) => {
-
-const container = document.getElementById("commentsContainer");
-if(!container) return;
-
-/* remove empty msg */
-const empty = document.getElementById("noComments");
-if(empty) empty.remove();
-
-const div = document.createElement("div");
-div.className = "comment-item";
-
-div.innerHTML = `
-<strong>${data.userName}</strong><br>
-${data.comment}<br>
-<small>${data.dateText}</small>
-`;
-
-container.prepend(div);
-
-/* update count */
-const count = document.getElementById("commentCount");
-if(count){
-count.textContent = parseInt(count.textContent || 0) + 1;
-}
-
 });
 
 
-/* MEDICAL MARKED */
-socket.on("medicalMarked", (data) => {
-
-let feed = document.getElementById("medicalFeed");
-
-if (!feed) {
-
-  const div = document.createElement("div");
-  div.id = "medicalFeed";
-  div.className = "medical-feed-card";
-
-  div.innerHTML = `
-    <div class="feed-header">
-      <div class="feed-avatar">
-        <img src="https://ui-avatars.com/api/?name=${data.userName}&background=c62828&color=fff">
-      </div>
-      <div class="feed-meta">
-        <strong>${data.userName}</strong>
-        <div class="feed-time">Just now</div>
-      </div>
-    </div>
-
-    <div class="feed-body">
-      <div class="feed-title">🚨 Medical Attention Required</div>
-      <div class="feed-content">
-        <strong>Type:</strong> ${data.type}<br>
-        <strong>Details:</strong> ${data.details}
-      </div>
-    </div>
-
-    <div class="feed-actions" onclick="toggleComments()">
-      💬 <span id="commentCount">0</span>
-    </div>
-
-    <div id="commentSection" class="comment-section">
-      <div id="commentsContainer"></div>
-
-      <form id="commentForm" class="comment-box">
-        <textarea id="commentInput" rows="2"></textarea>
-        <button type="submit">Post</button>
-      </form>
-    </div>
-  `;
-
-  document.querySelector(".container").prepend(div);
-
-}
-
+/* DELETE POST */
+document.querySelectorAll(".delete-post").forEach(btn=>{
+btn.addEventListener("click", async ()=>{
+await fetch(`/post/${btn.dataset.id}`,{method:"DELETE"});
+location.reload();
+});
 });
 
 
-/* MEDICAL UNMARK */
-socket.on("medicalUnmarked", () => {
-const feed = document.getElementById("medicalFeed");
-if (feed) feed.remove();
+/* DELETE COMMENT */
+document.querySelectorAll(".delete-comment").forEach(btn=>{
+btn.addEventListener("click", async ()=>{
+await fetch(`/comment/${btn.dataset.id}`,{method:"DELETE"});
+location.reload();
+});
 });
 
 </script>
