@@ -1,10 +1,28 @@
-// models/Update.js
-
 const mongoose = require('mongoose');
+
+const commentSchema = new mongoose.Schema({
+  _id: {
+    type: String,
+    default: () => new mongoose.Types.ObjectId().toString()
+  },
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  userName: String,
+  text: String,
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
 
 const updateSchema = new mongoose.Schema({
 
-  // Which dairy this update belongs to
+  /* =========================
+     RELATIONSHIP
+  ========================= */
   dairy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Dairy',
@@ -12,35 +30,80 @@ const updateSchema = new mongoose.Schema({
     index: true
   },
 
-  // Who made the update
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
 
-  // Image snapshot (NEW image when changed)
+  /* =========================
+     CORE CONTENT TYPES
+  ========================= */
+
+  type: {
+    type: String,
+    enum: [
+      'image',        // profile/image update
+      'comment',      // dairy/medical comment
+      'post',         // social feed post
+      'medical'       // optional medical log entry
+    ],
+    required: true,
+    index: true
+  },
+
+  /* =========================
+     POST / FEED CONTENT
+  ========================= */
+
+  text: {
+    type: String,
+    trim: true,
+    maxlength: 2000
+  },
+
   image: {
     type: String,
     default: null
   },
 
-  // Optional comment (FB-style caption or comment)
-  comment: {
-    type: String,
-    trim: true,
-    maxlength: 500
-  },
+  /* =========================
+     SOCIAL FEATURES
+  ========================= */
 
-  // Type of update (important for filtering later)
-  type: {
+  likes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
+  ],
+
+  comments: [commentSchema],
+
+  /* =========================
+     MEDICAL SNAPSHOT (OPTIONAL)
+  ========================= */
+
+  medical: {
+    isMarked: { type: Boolean, default: false },
     type: String,
-    enum: ['image', 'comment'],
-    required: true
+    details: String,
+    markedAt: Date,
+    markedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User'
+    }
   }
 
 }, {
   timestamps: true
 });
+
+
+/* =========================
+   INDEXES (IMPORTANT FOR FEED SPEED)
+========================= */
+updateSchema.index({ dairy: 1, createdAt: -1 });
+updateSchema.index({ type: 1 });
 
 module.exports = mongoose.model('Update', updateSchema);
