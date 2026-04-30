@@ -1,59 +1,63 @@
 const express = require("express");
-const mongoose = require("mongoose");
+const http = require("http");
 const path = require("path");
+const mongoose = require("mongoose");
 const expressLayouts = require("express-ejs-layouts");
-
-#----- save session
-
 const session = require("express-session");
 
-app.use(session({
-  secret: "secret-key",
-  resave: false,
-  saveUninitialized: false,
-}));
-
-// make user available in all views
-app.use((req, res, next) => {
-  res.locals.user = req.session.user || null;
-  next();
-});
-
+// ROUTES
 const createRoutes = require("./routes/create");
 const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
 
+// INIT APP
 const app = express();
+const server = http.createServer(app); // IMPORTANT for socket later
+
+// ===== DATABASE =====
+mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
+  .then(() => console.log("MongoDB Connected"))
+  .catch(err => console.log("MongoDB Error:", err));
 
 // ===== MIDDLEWARE =====
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// ===== STATIC FILES (optional but recommended) =====
+// ===== SESSION =====
+app.use(session({
+  secret: "secret-key",
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    maxAge: 1000 * 60 * 60 * 24 // 1 day
+  }
+}));
+
+// expose user globally
+app.use((req, res, next) => {
+  res.locals.user = req.session.user || null;
+  next();
+});
+
+// ===== STATIC FILES =====
 app.use(express.static(path.join(__dirname, "public")));
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ===== VIEW ENGINE =====
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// ===== LAYOUT CONFIG =====
+// ===== LAYOUTS =====
 app.use(expressLayouts);
-
-// set default layout file (views/layout.ejs)
 app.set("layout", "layout");
-
-// ===== DATABASE =====
-mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log(err));
 
 // ===== ROUTES =====
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 
-
-// optional: redirect home
+// ===== HOME REDIRECT =====
 app.get("/", (req, res) => {
   res.redirect("/create-invite");
 });
@@ -66,9 +70,9 @@ app.use((req, res) => {
   });
 });
 
-// ===== SERVER =====
+// ===== START SERVER =====
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
