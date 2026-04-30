@@ -1,11 +1,9 @@
-// services/updateService.js
-
 const Update = require('../models/Update');
 const Dairy = require('../models/dairy');
 
 
 // =========================
-// AGE CALCULATOR
+// AGE CALCULATOR (FIXED)
 // =========================
 function calculateAge(dob) {
   if (!dob) return null;
@@ -13,45 +11,51 @@ function calculateAge(dob) {
   const now = new Date();
   const birth = new Date(dob);
 
-  let y = now.getFullYear() - birth.getFullYear();
-  let m = now.getMonth() - birth.getMonth();
-  let d = now.getDate() - birth.getDate();
+  let years = now.getFullYear() - birth.getFullYear();
+  let months = now.getMonth() - birth.getMonth();
+  let days = now.getDate() - birth.getDate();
 
-  if (d < 0) {
-    m--;
-    d += 30;
+  if (days < 0) {
+    months--;
+    const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+    days += prevMonth.getDate();
   }
 
-  if (m < 0) {
-    y--;
-    m += 12;
+  if (months < 0) {
+    years--;
+    months += 12;
   }
 
-  return `${y} years, ${m} months, ${d} days`;
+  return `${years} years, ${months} months, ${days} days`;
 }
 
 
 // =========================
-// FORMAT DATE (better UX)
+// FORMAT DATE
 // =========================
 function formatDate(date) {
-  return new Date(date).toLocaleString(); // cleaner than toDateString()
+  if (!date) return '';
+  return new Date(date).toLocaleString();
 }
 
 
 // =========================
-// FORMAT DAIRY
+// FORMAT DAIRY (FB STYLE PROFILE)
 // =========================
 exports.formatDairy = (dairy, imageUpdates = []) => {
 
   const hasIdentity = dairy.code >= 0;
 
-  // latest image first (fallback to profileImage)
-  const latestImage = imageUpdates.length
-    ? `/uploads/${imageUpdates[0].image}`
-    : (dairy.profileImage
+  const images = imageUpdates
+    .filter(u => u.image)
+    .map(u => `/uploads/${u.image}`);
+
+  const latestImage =
+    images.length > 0
+      ? images[0]
+      : dairy.profileImage
         ? `/uploads/${dairy.profileImage}`
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(dairy.name)}&background=198754&color=fff`);
+        : `https://ui-avatars.com/api/?name=${encodeURIComponent(dairy.name)}&background=198754&color=fff`;
 
   return {
     _id: dairy._id,
@@ -60,9 +64,7 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     mass: dairy.mass || 0,
 
     displayImage: latestImage,
-
-    // image history (for gallery)
-    images: imageUpdates.map(u => `/uploads/${u.image}`),
+    images, // full gallery
 
     hasIdentity,
 
@@ -80,9 +82,10 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
 // =========================
 // FORMAT COMMENTS ONLY
 // =========================
-exports.formatUpdates = (updates) => {
+exports.formatUpdates = (updates = []) => {
+
   return updates
-    .filter(u => u.comment) // only comments
+    .filter(u => u.comment && u.type === 'comment')
     .map(u => ({
       comment: u.comment,
       userName: u.user?.name || 'User',
@@ -99,13 +102,13 @@ exports.getDairyPage = async (id) => {
   const dairy = await Dairy.findById(id);
   if (!dairy) throw new Error('Not found');
 
-  // ALL updates
   const updates = await Update.find({ dairy: id })
     .populate('user', 'name')
     .sort({ createdAt: -1 });
 
-  // ONLY image updates (for gallery)
-  const imageUpdates = updates.filter(u => u.type === 'image' && u.image);
+  const imageUpdates = updates.filter(
+    u => u.type === 'image' && u.image
+  );
 
   return {
     dairy: exports.formatDairy(dairy, imageUpdates),
@@ -119,14 +122,16 @@ exports.getDairyPage = async (id) => {
 // =========================
 exports.addComment = async ({ dairyId, userId, comment }) => {
 
-  if (!comment || !comment.trim()) {
+  const clean = comment?.trim();
+
+  if (!clean) {
     throw new Error('Comment is required');
   }
 
   return Update.create({
     dairy: dairyId,
     user: userId,
-    comment,
+    comment: clean,
     type: 'comment'
   });
 };
@@ -141,7 +146,7 @@ exports.updateImage = async ({ dairyId, userId, image }) => {
     throw new Error('Image is required');
   }
 
-  // update current profile image
+  // update main profile image
   await Dairy.findByIdAndUpdate(dairyId, {
     profileImage: image
   });
