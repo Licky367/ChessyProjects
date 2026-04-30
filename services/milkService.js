@@ -28,17 +28,16 @@ exports.saveMilkRecords = async (records, userId) => {
 
 
 /* =========================
-   DAILY STATS (DB DRIVEN)
+   DAILY STATS (MODEL DRIVEN)
 ========================= */
 exports.getDailyStats = async (day) => {
-  const result = await Milk.getDailyReport(day); // 🔥 use model
-
-  return result;
+  return Milk.getDailyReport(day);
 };
 
 
 /* =========================
-   SAVE DAILY STATS (DB DRIVEN)
+   SAVE DAILY STATS (LOCKED)
+   (ADMIN ONLY CONTROLLED IN CONTROLLER)
 ========================= */
 exports.saveDailyStats = async ({ date, consumed, price }) => {
   const day = new Date(date).toISOString().split("T")[0];
@@ -52,12 +51,11 @@ exports.saveDailyStats = async ({ date, consumed, price }) => {
 
 
 /* =========================
-   MONTHLY STATS (DB DRIVEN)
+   MONTHLY STATS (FIXED CASH)
 ========================= */
 exports.getMonthlyStats = async (month) => {
-  const records = await Milk.getMonthlyReport(month); // 🔥 DB aggregation
+  const records = await Milk.getMonthlyReport(month);
 
-  // attach dairy info
   const dairies = await Dairy.find({
     _id: { $in: records.map(r => r.dairy) }
   });
@@ -71,18 +69,28 @@ exports.getMonthlyStats = async (month) => {
     avg: r.avg
   }));
 
+
   /* =========================
-     🔥 CORRECT CASH LOGIC
-     SUM DAILY CASH (NOT PRICE * TOTAL)
+     🔥 FIXED CASH LOGIC
+     (USE DAILY SNAPSHOTS FROM MODEL)
   ========================= */
   const cashAgg = await Milk.aggregate([
     { $match: { month } },
+
     {
       $group: {
         _id: "$day",
-        cash: { $first: "$dailyStats.cash" } // one per day
+        cash: { $first: "$dailyStats.cash" },
+        locked: { $first: "$dailyStats.locked" }
       }
     },
+
+    {
+      $match: {
+        locked: true
+      }
+    },
+
     {
       $group: {
         _id: null,
@@ -104,4 +112,93 @@ exports.getMonthlyStats = async (month) => {
       cash: totalCash
     }
   };
+};
+
+
+/* =========================
+   🔥 SALES ENGINE CORE
+========================= */
+
+/* GET SALES PAGE DATA */
+exports.getSalesPageData = async () => {
+  const data = await Milk.find({}).lean();
+
+  const standingOrders = [];
+
+  data.forEach(d => {
+    if (d.standingOrders?.length) {
+      d.standingOrders.forEach(o => {
+        standingOrders.push({
+          ...o,
+          milkId: d._id
+        });
+      });
+    }
+  });
+
+  return { standingOrders };
+};
+
+
+/* PROCESS DAILY SALES */
+exports.processDailySales = async ({ records, price, user }) => {
+  const day = new Date().toISOString().split("T")[0];
+
+  if (!records || !records.length) return { day };
+
+
+  /* =========================
+     TOTAL CONSUMPTION
+  ========================= */
+  const consumed = records.reduce((sum, r) => {
+    return sum + (Number(r.liters) || 0);
+  }, 0);
+
+
+  /* =========================
+     UPDATE DAILY STATS
+  ========================= */
+  await Milk.saveDailyStats({
+    day,
+    consumed,
+    price
+  });
+
+  return { date: day };
+};
+
+
+/* ADD STANDING ORDER */
+exports.addStandingOrder = async ({ customerName, liters }) => {
+  const milkDoc = await Milk.findOne().sort({ createdAt: -1 });
+
+  if (!milkDoc) {
+    throw new Error("No milk document found");
+  }
+
+  milkDoc.standingOrders.push({
+    customerName,
+    liters,
+    effectiveDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+  });
+
+  return milkDoc.save();
+};
+
+
+/* OMIT STANDING ORDER */
+exports.omitStandingOrder = async ({ orderId, user }) => {
+  if (!user || user.role !== "admin") {
+    throw new Error("Unauthorized");
+  }
+
+  return Milk.updateOne(
+    { "standingOrders._id": orderId },
+    {
+      $set: {
+        "standingOrders.$.omitted": true,
+        "standingOrders.$.isActive": false
+      }
+    }
+  );
 };
