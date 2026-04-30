@@ -2,9 +2,9 @@ const Update = require('../models/Update');
 const Dairy = require('../models/dairy');
 
 
-// =========================
-// AGE CALCULATOR
-// =========================
+/* =========================
+   AGE CALCULATOR
+========================= */
 function calculateAge(dob) {
   if (!dob) return null;
 
@@ -30,18 +30,18 @@ function calculateAge(dob) {
 }
 
 
-// =========================
-// FORMAT DATE
-// =========================
+/* =========================
+   FORMAT DATE
+========================= */
 function formatDate(date) {
   if (!date) return '';
   return new Date(date).toLocaleString();
 }
 
 
-// =========================
-// FORMAT DAIRY
-// =========================
+/* =========================
+   FORMAT DAIRY
+========================= */
 exports.formatDairy = (dairy, imageUpdates = []) => {
 
   const hasIdentity = dairy.code >= 0;
@@ -74,30 +74,36 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     isMilking: dairy.isMilking,
     isMilkingText: dairy.isMilking ? 'Being Milked' : 'Not Milked',
 
-    medicalAttention: dairy.medicalAttention || {
-      isMarked: false
+    // 🔥 ALWAYS NORMALIZED
+    medicalAttention: {
+      isMarked: dairy?.medicalAttention?.isMarked || false,
+      type: dairy?.medicalAttention?.type || '',
+      details: dairy?.medicalAttention?.details || '',
+      markedAt: dairy?.medicalAttention?.markedAt || null
     }
   };
 };
 
 
-// =========================
-// FORMAT COMMENTS
-// =========================
+/* =========================
+   FORMAT COMMENTS (UPGRADED)
+========================= */
 exports.formatUpdates = (updates = []) => {
   return updates
     .filter(u => u.comment && u.type === 'comment')
     .map(u => ({
+      _id: u._id, // 🔥 IMPORTANT (needed for UI)
       comment: u.comment,
       userName: u.user?.name || 'User',
-      dateText: formatDate(u.createdAt)
+      dateText: formatDate(u.createdAt),
+      createdAt: u.createdAt
     }));
 };
 
 
-// =========================
-// PROFILE PAGE DATA
-// =========================
+/* =========================
+   PROFILE PAGE DATA (OPTIMIZED)
+========================= */
 exports.getDairyPage = async (id) => {
 
   const dairy = await Dairy.findById(id);
@@ -111,16 +117,19 @@ exports.getDairyPage = async (id) => {
     u => u.type === 'image' && u.image
   );
 
+  const comments = exports.formatUpdates(updates);
+
   return {
     dairy: exports.formatDairy(dairy, imageUpdates),
-    updates: exports.formatUpdates(updates)
+    updates: comments,
+    commentCount: comments.length // 🔥 NEW (for instant UI count)
   };
 };
 
 
-// =========================
-// POSITIVE DAIRIES
-// =========================
+/* =========================
+   POSITIVE DAIRIES
+========================= */
 exports.getPositiveDairies = async () => {
 
   const dairies = await Dairy.find({ code: { $gt: 0 } })
@@ -135,9 +144,9 @@ exports.getPositiveDairies = async () => {
 };
 
 
-// =========================
-// NEGATIVE DAIRIES
-// =========================
+/* =========================
+   NEGATIVE DAIRIES
+========================= */
 exports.getNegativeDairies = async () => {
 
   const dairies = await Dairy.find({ code: { $lt: 0 } })
@@ -152,26 +161,28 @@ exports.getNegativeDairies = async () => {
 };
 
 
-// =========================
-// ADD COMMENT
-// =========================
+/* =========================
+   ADD COMMENT (UPGRADED)
+========================= */
 exports.addComment = async ({ dairyId, userId, comment }) => {
 
   const clean = comment?.trim();
   if (!clean) throw new Error('Comment is required');
 
-  return Update.create({
+  const created = await Update.create({
     dairy: dairyId,
     user: userId,
     comment: clean,
     type: 'comment'
   });
+
+  return created; // 🔥 return full doc (controller formats)
 };
 
 
-// =========================
-// UPDATE IMAGE
-// =========================
+/* =========================
+   UPDATE IMAGE
+========================= */
 exports.updateImage = async ({ dairyId, userId, image }) => {
 
   if (!image) throw new Error('Image is required');
@@ -189,9 +200,9 @@ exports.updateImage = async ({ dairyId, userId, image }) => {
 };
 
 
-// =========================
-// 🚑 MARK MEDICAL ATTENTION (IMPROVED)
-// =========================
+/* =========================
+   🚑 MARK MEDICAL ATTENTION
+========================= */
 exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
 
   if (!type || !details) {
@@ -201,7 +212,6 @@ exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
   const dairy = await Dairy.findById(dairyId);
   if (!dairy) throw new Error('Dairy not found');
 
-  // 🔥 ALLOW UPDATE (instead of blocking)
   dairy.medicalAttention = {
     isMarked: true,
     type: type.trim(),
@@ -213,13 +223,21 @@ exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
 
   await dairy.save();
 
+  // 🔥 OPTIONAL: ALSO LOG AS UPDATE (future feed expansion)
+  await Update.create({
+    dairy: dairyId,
+    user: userId,
+    type: 'medical',
+    comment: `Marked medical: ${type}`
+  });
+
   return dairy;
 };
 
 
-// =========================
-// 🚑 UNMARK MEDICAL ATTENTION
-// =========================
+/* =========================
+   🚑 UNMARK MEDICAL ATTENTION
+========================= */
 exports.unmarkMedicalAttention = async ({ dairyId }) => {
 
   const dairy = await Dairy.findById(dairyId);
