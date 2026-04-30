@@ -35,4 +35,12 @@ router.post("/sales/standing", milkController.addStandingOrder);
 router.post("/sales/standing/omit", milkController.omitStandingOrder);
 
 
+/* =========================
+   🆕 MILKING HISTORY (NEW)
+========================= */
+
+// view milking history of a specific dairy animal
+router.get("/milk/history/:dairyId", milkController.getMilkingHistory);
+
+
 module.exports = router;
