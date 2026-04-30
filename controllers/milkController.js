@@ -20,8 +20,13 @@ exports.getMilkPage = async (req, res) => {
 ========================= */
 exports.submitMilk = async (req, res) => {
   try {
-    await milkService.saveMilkRecords(req.body.records, req.user?._id);
+    await milkService.saveMilkRecords(
+      req.body.records,
+      req.user?._id // 🔥 ensures recordedBy is saved
+    );
+
     res.redirect("/milk/stats?type=day");
+
   } catch (err) {
     console.error(err);
     res.status(500).send(err.message);
@@ -77,18 +82,18 @@ exports.getMilkStats = async (req, res) => {
 
 /* =========================
    SAVE DAILY STATS (LOCK SYSTEM)
-   (Now derived from SALES ONLY)
 ========================= */
 exports.saveDailyStats = async (req, res) => {
   try {
     const { date, price } = req.body;
 
-    await milkService.lockDailyStats({
+    await milkService.saveDailyStats({
       date,
       price: Number(price)
     });
 
     res.redirect(`/milk/stats?type=day&date=${date}`);
+
   } catch (err) {
     console.error(err);
     res.status(500).send(err.message);
@@ -97,7 +102,7 @@ exports.saveDailyStats = async (req, res) => {
 
 
 /* =========================
-   🔥 SALES SYSTEM (NEW)
+   SALES SYSTEM
 ========================= */
 
 /* GET SALES PAGE */
@@ -155,7 +160,7 @@ exports.addStandingOrder = async (req, res) => {
 };
 
 
-/* OMIT STANDING ORDER (ADMIN ONLY LOGIC IN SERVICE) */
+/* OMIT STANDING ORDER */
 exports.omitStandingOrder = async (req, res) => {
   try {
     const { id } = req.body;
@@ -170,5 +175,32 @@ exports.omitStandingOrder = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send(err.message);
+  }
+};
+
+
+/* =========================
+   🆕 MILKING HISTORY
+========================= */
+exports.getMilkingHistory = async (req, res) => {
+  try {
+    const { dairyId } = req.params;
+    const { month } = req.query;
+
+    const data = await milkService.getMilkingHistory({
+      dairyId,
+      month
+    });
+
+    res.render("milkingHistory", {
+      grouped: data.grouped,
+      monthlyTotal: data.monthlyTotal,
+      hasData: data.hasData,
+      selectedMonth: month || ""
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error loading milking history");
   }
 };
