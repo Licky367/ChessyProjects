@@ -64,18 +64,48 @@ const dairySchema = new mongoose.Schema(
       default: false,
       validate: {
         validator: function (value) {
-          // Facilities (negative code) cannot be milked
           if (value && this.code < 0) return false;
-
-          // Only FEMALES (even codes) can be milked
           if (value && this.code >= 0 && this.code % 2 !== 0) return false;
-
           return true;
         },
         message: 'Only female animals can be marked as being milked.'
       }
+    },
+
+    // =========================
+    // MEDICAL ATTENTION SYSTEM
+    // =========================
+    medicalAttention: {
+      isMarked: {
+        type: Boolean,
+        default: false
+      },
+
+      type: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+
+      details: {
+        type: String,
+        trim: true,
+        default: ''
+      },
+
+      markedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+      },
+
+      markedAt: {
+        type: Date,
+        default: null
+      }
     }
   },
+
   {
     timestamps: true,
 
@@ -96,13 +126,19 @@ dairySchema.virtual('gender').get(function () {
   return this.code % 2 === 0 ? 'Female' : 'Male';
 });
 
-// Boolean helpers (VERY IMPORTANT for your service/UI)
+// Female helper
 dairySchema.virtual('isFemale').get(function () {
   return this.code >= 0 && this.code % 2 === 0;
 });
 
+// Identity helper (valid animal vs facility)
 dairySchema.virtual('hasIdentity').get(function () {
   return this.code >= 0;
+});
+
+// Medical shortcut helper
+dairySchema.virtual('needsMedicalAttention').get(function () {
+  return this.medicalAttention && this.medicalAttention.isMarked;
 });
 
 
