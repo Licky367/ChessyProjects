@@ -1,5 +1,3 @@
-<!-- views/update.ejs -->
-
 <script src="/socket.io/socket.io.js"></script>
 
 <div class="container mt-4">
@@ -109,7 +107,44 @@ Kgs
 <% } %>
 
 </div>
+
 </div>
+
+
+<!-- ========================= -->
+<!-- 🟥 MEDICAL FEED (NEW ADDITION) -->
+<!-- ========================= -->
+
+<% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
+
+<div id="medicalFeed" class="medical-feed-card">
+
+  <div class="feed-header">
+    <div class="feed-avatar">
+      <img src="https://ui-avatars.com/api/?name=<%= user?.name || 'System' %>&background=c62828&color=fff">
+    </div>
+
+    <div class="feed-meta">
+      <strong><%= user?.name || 'System Update' %></strong>
+      <div class="feed-time">
+        <%= dairy.medicalAttention.markedAt ? new Date(dairy.medicalAttention.markedAt).toLocaleString() : '' %>
+      </div>
+    </div>
+  </div>
+
+  <div class="feed-body">
+    <div class="feed-title">🚨 Medical Attention Required</div>
+
+    <div class="feed-content">
+      <strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
+      <strong>Details:</strong> <%= dairy.medicalAttention.details %>
+    </div>
+  </div>
+
+</div>
+
+<% } %>
+
 
 <!-- ========================= -->
 <!-- IMAGE ACTION SHEET -->
@@ -134,6 +169,7 @@ Kgs
 
 </div>
 
+
 <!-- ========================= -->
 <!-- GALLERY MODAL -->
 <!-- ========================= -->
@@ -149,7 +185,6 @@ Kgs
 
 <button class="gallery-nav gallery-next" onclick="nextImage()">›</button>
 
-<!-- COMMENT ICON -->
 <button
 class="btn btn-light rounded-circle"
 style="position:absolute;bottom:20px;right:20px;width:55px;height:55px;"
@@ -164,8 +199,9 @@ data-bs-target="#commentsModal"
 </div>
 </div>
 
+
 <!-- ========================= -->
-<!-- COMMENTS MODAL (SOCKET ENABLED) -->
+<!-- COMMENTS MODAL -->
 <!-- ========================= -->
 <div class="modal fade" id="commentsModal" tabindex="-1">
 <div class="modal-dialog">
@@ -178,7 +214,6 @@ data-bs-target="#commentsModal"
 
 <div class="modal-body">
 
-<!-- LIVE COMMENTS CONTAINER -->
 <div id="commentsContainer">
 
 <% if (updates.length) { %>
@@ -209,6 +244,7 @@ data-bs-target="#commentsModal"
 </div>
 </div>
 
+
 <!-- ========================= -->
 <!-- IMAGE UPLOAD -->
 <!-- ========================= -->
@@ -224,24 +260,72 @@ accept="image/*"
 onchange="document.getElementById('uploadForm').submit()">
 </form>
 
+
+<!-- ========================= -->
+<!-- STYLES (MEDICAL FEED) -->
+<!-- ========================= -->
+<style>
+
+.medical-feed-card{
+  background:#fff;
+  border-left:5px solid #c62828;
+  border-radius:10px;
+  padding:12px;
+  margin-top:15px;
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+.feed-header{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+
+.feed-avatar img{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+}
+
+.feed-meta strong{
+  font-size:14px;
+}
+
+.feed-time{
+  font-size:12px;
+  color:#777;
+}
+
+.feed-body{
+  margin-top:10px;
+}
+
+.feed-title{
+  font-weight:bold;
+  color:#c62828;
+  margin-bottom:5px;
+}
+
+.feed-content{
+  font-size:13px;
+  color:#333;
+}
+
+</style>
+
+
 <!-- ========================= -->
 <!-- SOCKET + JS -->
 <!-- ========================= -->
 <script>
 
 const dairyId = "<%= dairy._id %>";
-const userId = "<%= user?._id %>";
-const userName = "<%= user?.name %>";
-
-/* SOCKET INIT */
 const socket = io();
 
-/* JOIN ROOM */
 socket.emit("joinDairy", dairyId);
 
-/* RECEIVE LIVE COMMENTS */
+/* COMMENTS */
 socket.on("commentAdded", (data) => {
-
 const container = document.getElementById("commentsContainer");
 
 const div = document.createElement("div");
@@ -254,103 +338,50 @@ ${data.comment}<br>
 `;
 
 container.prepend(div);
-
-const noComments = document.getElementById("noComments");
-if(noComments) noComments.remove();
 });
 
-/* SEND COMMENT */
-document.getElementById("commentForm")?.addEventListener("submit", (e) => {
-e.preventDefault();
 
-const commentInput = document.getElementById("commentInput");
+/* 🟥 MEDICAL MARKED */
+socket.on("medicalMarked", (data) => {
 
-socket.emit("newComment", {
-dairyId,
-userId,
-userName,
-comment: commentInput.value
-});
+let feed = document.getElementById("medicalFeed");
 
-commentInput.value = "";
-});
+if (!feed) {
+  const div = document.createElement("div");
+  div.id = "medicalFeed";
+  div.className = "medical-feed-card";
 
-/* IMAGE LIST */
-const images = ["<%= dairy.displayImage %>"];
-let currentIndex = 0;
+  div.innerHTML = `
+    <div class="feed-header">
+      <div class="feed-avatar">
+        <img src="https://ui-avatars.com/api/?name=${data.userName || 'System'}&background=c62828&color=fff">
+      </div>
 
-/* ACTION SHEET */
-document.getElementById("profilePreview")
-.addEventListener("click", () => {
-document.getElementById("imageSheet").classList.add("show");
-});
+      <div class="feed-meta">
+        <strong>${data.userName || 'System Update'}</strong>
+        <div class="feed-time">Just now</div>
+      </div>
+    </div>
 
-function closeSheet(){
-document.getElementById("imageSheet").classList.remove("show");
+    <div class="feed-body">
+      <div class="feed-title">🚨 Medical Attention Required</div>
+      <div class="feed-content">
+        <strong>Type:</strong> ${data.type}<br>
+        <strong>Details:</strong> ${data.details}
+      </div>
+    </div>
+  `;
+
+  document.querySelector(".container").prepend(div);
 }
 
-/* GALLERY */
-function openGallery(){
-closeSheet();
-document.getElementById("galleryImage").src = images[currentIndex];
-
-new bootstrap.Modal(
-document.getElementById("viewImageModal")
-).show();
-}
-
-function nextImage(){
-currentIndex = (currentIndex + 1) % images.length;
-document.getElementById("galleryImage").src = images[currentIndex];
-}
-
-function prevImage(){
-currentIndex = (currentIndex - 1 + images.length) % images.length;
-document.getElementById("galleryImage").src = images[currentIndex];
-}
-
-/* INLINE EDIT */
-document.querySelectorAll(".editable").forEach(el => {
-el.addEventListener("click", function(){
-
-const field = this.dataset.field;
-const current = this.dataset.value;
-
-const value = prompt("Update " + field, current);
-if(value === null) return;
-
-document.getElementById("editField").value = field;
-document.getElementById("editValue").value = value;
-
-const form = document.getElementById("inlineEditForm");
-form.action = "/dairy/<%= dairy._id %>";
-form.submit();
-
-});
 });
 
-/* MILKING */
-document.getElementById("milkingToggle")
-?.addEventListener("change", function(){
 
-fetch("/dairy/<%= dairy._id %>/milking",{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body:JSON.stringify({ isMilking:this.checked })
-});
-
-const badge = document.getElementById("milkBadge");
-
-if(this.checked){
-badge.innerText = "Being Milked";
-badge.classList.add("bg-success");
-badge.classList.remove("bg-secondary");
-}else{
-badge.innerText = "Not Milked";
-badge.classList.add("bg-secondary");
-badge.classList.remove("bg-success");
-}
-
+/* 🟥 MEDICAL UNMARKED */
+socket.on("medicalUnmarked", () => {
+const feed = document.getElementById("medicalFeed");
+if (feed) feed.remove();
 });
 
 </script>
