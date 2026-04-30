@@ -1,9 +1,12 @@
 <!-- views/update.ejs -->
 
+<script src="/socket.io/socket.io.js"></script>
+
 <div class="container mt-4">
 
 <div class="card">
 
+<!-- PROFILE TOP -->
 <div class="profile-top">
 
 <!-- LEFT -->
@@ -146,7 +149,7 @@ Kgs
 
 <button class="gallery-nav gallery-next" onclick="nextImage()">›</button>
 
-<!-- COMMENT BUTTON (FB STYLE) -->
+<!-- COMMENT ICON -->
 <button
 class="btn btn-light rounded-circle"
 style="position:absolute;bottom:20px;right:20px;width:55px;height:55px;"
@@ -162,7 +165,7 @@ data-bs-target="#commentsModal"
 </div>
 
 <!-- ========================= -->
-<!-- COMMENTS MODAL -->
+<!-- COMMENTS MODAL (SOCKET ENABLED) -->
 <!-- ========================= -->
 <div class="modal fade" id="commentsModal" tabindex="-1">
 <div class="modal-dialog">
@@ -175,6 +178,9 @@ data-bs-target="#commentsModal"
 
 <div class="modal-body">
 
+<!-- LIVE COMMENTS CONTAINER -->
+<div id="commentsContainer">
+
 <% if (updates.length) { %>
 
 <% updates.forEach(item => { %>
@@ -186,12 +192,14 @@ data-bs-target="#commentsModal"
 <% }) %>
 
 <% } else { %>
-<p>No comments yet.</p>
+<p id="noComments">No comments yet.</p>
 <% } %>
 
+</div>
+
 <% if (user) { %>
-<form action="/dairy/<%= dairy._id %>/comment" method="POST" class="comment-box">
-<textarea name="comment" rows="2" required></textarea>
+<form id="commentForm" class="comment-box">
+<textarea name="comment" id="commentInput" rows="2" required></textarea>
 <button class="btn btn-primary">Post</button>
 </form>
 <% } %>
@@ -202,7 +210,7 @@ data-bs-target="#commentsModal"
 </div>
 
 <!-- ========================= -->
-<!-- HIDDEN IMAGE UPLOAD -->
+<!-- IMAGE UPLOAD -->
 <!-- ========================= -->
 <form
 id="uploadForm"
@@ -211,38 +219,69 @@ method="POST"
 enctype="multipart/form-data"
 style="display:none;"
 >
-<input
-type="file"
-name="profileImage"
-id="imageInput"
+<input type="file" name="profileImage" id="imageInput"
 accept="image/*"
-onchange="document.getElementById('uploadForm').submit()"
->
+onchange="document.getElementById('uploadForm').submit()">
 </form>
 
 <!-- ========================= -->
-<!-- INLINE EDIT FORM -->
+<!-- SOCKET + JS -->
 <!-- ========================= -->
-<form id="inlineEditForm" method="POST" style="display:none;">
-<input type="hidden" name="_method" value="PUT">
-<input type="hidden" name="field" id="editField">
-<input type="hidden" name="value" id="editValue">
-</form>
-
 <script>
 
-/* IMAGE LIST (history style) */
-const images = [
-"<%= dairy.displayImage %>",
-"/uploads/sample-old-1.jpg",
-"/uploads/sample-old-2.jpg"
-];
+const dairyId = "<%= dairy._id %>";
+const userId = "<%= user?._id %>";
+const userName = "<%= user?.name %>";
 
+/* SOCKET INIT */
+const socket = io();
+
+/* JOIN ROOM */
+socket.emit("joinDairy", dairyId);
+
+/* RECEIVE LIVE COMMENTS */
+socket.on("commentAdded", (data) => {
+
+const container = document.getElementById("commentsContainer");
+
+const div = document.createElement("div");
+div.className = "comment-item";
+
+div.innerHTML = `
+<strong>${data.userName}</strong><br>
+${data.comment}<br>
+<small>${data.dateText}</small>
+`;
+
+container.prepend(div);
+
+const noComments = document.getElementById("noComments");
+if(noComments) noComments.remove();
+});
+
+/* SEND COMMENT */
+document.getElementById("commentForm")?.addEventListener("submit", (e) => {
+e.preventDefault();
+
+const commentInput = document.getElementById("commentInput");
+
+socket.emit("newComment", {
+dairyId,
+userId,
+userName,
+comment: commentInput.value
+});
+
+commentInput.value = "";
+});
+
+/* IMAGE LIST */
+const images = ["<%= dairy.displayImage %>"];
 let currentIndex = 0;
 
-/* OPEN ACTION SHEET */
+/* ACTION SHEET */
 document.getElementById("profilePreview")
-.addEventListener("click", function(){
+.addEventListener("click", () => {
 document.getElementById("imageSheet").classList.add("show");
 });
 
@@ -250,12 +289,10 @@ function closeSheet(){
 document.getElementById("imageSheet").classList.remove("show");
 }
 
-/* OPEN GALLERY */
+/* GALLERY */
 function openGallery(){
 closeSheet();
-
-document.getElementById("galleryImage").src =
-images[currentIndex];
+document.getElementById("galleryImage").src = images[currentIndex];
 
 new bootstrap.Modal(
 document.getElementById("viewImageModal")
@@ -264,20 +301,16 @@ document.getElementById("viewImageModal")
 
 function nextImage(){
 currentIndex = (currentIndex + 1) % images.length;
-document.getElementById("galleryImage").src =
-images[currentIndex];
+document.getElementById("galleryImage").src = images[currentIndex];
 }
 
 function prevImage(){
 currentIndex = (currentIndex - 1 + images.length) % images.length;
-document.getElementById("galleryImage").src =
-images[currentIndex];
+document.getElementById("galleryImage").src = images[currentIndex];
 }
 
 /* INLINE EDIT */
-document.querySelectorAll(".editable")
-.forEach(el => {
-
+document.querySelectorAll(".editable").forEach(el => {
 el.addEventListener("click", function(){
 
 const field = this.dataset.field;
@@ -294,10 +327,9 @@ form.action = "/dairy/<%= dairy._id %>";
 form.submit();
 
 });
-
 });
 
-/* MILKING TOGGLE */
+/* MILKING */
 document.getElementById("milkingToggle")
 ?.addEventListener("change", function(){
 
@@ -311,12 +343,12 @@ const badge = document.getElementById("milkBadge");
 
 if(this.checked){
 badge.innerText = "Being Milked";
-badge.classList.remove("bg-secondary");
 badge.classList.add("bg-success");
+badge.classList.remove("bg-secondary");
 }else{
 badge.innerText = "Not Milked";
-badge.classList.remove("bg-success");
 badge.classList.add("bg-secondary");
+badge.classList.remove("bg-success");
 }
 
 });
