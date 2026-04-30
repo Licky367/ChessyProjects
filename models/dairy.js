@@ -2,18 +2,18 @@ const mongoose = require('mongoose');
 
 const dairySchema = new mongoose.Schema(
   {
-    // =========================
-    // PROFILE IMAGE
-    // =========================
+    /* =========================
+       PROFILE IMAGE
+    ========================= */
     profileImage: {
       type: String,
       trim: true,
       default: ''
     },
 
-    // =========================
-    // UNIQUE CODE
-    // =========================
+    /* =========================
+       UNIQUE CODE
+    ========================= */
     code: {
       type: Number,
       required: true,
@@ -24,18 +24,18 @@ const dairySchema = new mongoose.Schema(
       }
     },
 
-    // =========================
-    // NAME
-    // =========================
+    /* =========================
+       NAME
+    ========================= */
     name: {
       type: String,
       required: true,
       trim: true
     },
 
-    // =========================
-    // DATE OF BIRTH
-    // =========================
+    /* =========================
+       DATE OF BIRTH
+    ========================= */
     dob: {
       type: Date,
       required: function () {
@@ -44,9 +44,9 @@ const dairySchema = new mongoose.Schema(
       default: null
     },
 
-    // =========================
-    // MASS
-    // =========================
+    /* =========================
+       MASS
+    ========================= */
     mass: {
       type: Number,
       required: true,
@@ -54,9 +54,9 @@ const dairySchema = new mongoose.Schema(
       default: 0
     },
 
-    // =========================
-    // MILKING STATUS
-    // =========================
+    /* =========================
+       MILKING STATUS
+    ========================= */
     isMilking: {
       type: Boolean,
       default: false,
@@ -70,9 +70,9 @@ const dairySchema = new mongoose.Schema(
       }
     },
 
-    // =========================
-    // MEDICAL ATTENTION SYSTEM (IMPROVED)
-    // =========================
+    /* =========================
+       🚑 MEDICAL ATTENTION SYSTEM
+    ========================= */
     medicalAttention: {
       isMarked: {
         type: Boolean,
@@ -102,7 +102,6 @@ const dairySchema = new mongoose.Schema(
         default: null
       },
 
-      // 🔥 NEW (audit safety - optional but important)
       updatedAt: {
         type: Date,
         default: null
@@ -112,15 +111,16 @@ const dairySchema = new mongoose.Schema(
 
   {
     timestamps: true,
+    minimize: false, // 🔥 KEEP EMPTY OBJECTS (important for medicalAttention)
     toJSON: { virtuals: true },
     toObject: { virtuals: true }
   }
 );
 
 
-// =========================
-// VIRTUALS
-// =========================
+/* =========================
+   VIRTUALS
+========================= */
 
 // Gender
 dairySchema.virtual('gender').get(function () {
@@ -144,10 +144,10 @@ dairySchema.virtual('needsMedicalAttention').get(function () {
 });
 
 
-// =========================
-// PRE-SAVE SAFETY HOOK
-// =========================
-dairySchema.pre('save', function (next) {
+/* =========================
+   PRE-VALIDATE (🔥 STRONGER THAN PRE-SAVE)
+========================= */
+dairySchema.pre('validate', function (next) {
 
   // enforce milking rule
   if (!this.isFemale) {
@@ -159,29 +159,49 @@ dairySchema.pre('save', function (next) {
     this.dob = null;
   }
 
-  // 🔥 ensure medical consistency
+  // ensure medical structure ALWAYS exists
   if (!this.medicalAttention) {
-    this.medicalAttention = {
-      isMarked: false,
-      type: '',
-      details: '',
-      markedBy: null,
-      markedAt: null,
-      updatedAt: null
-    };
+    this.medicalAttention = {};
+  }
+
+  // normalize medical fields
+  this.medicalAttention.isMarked = !!this.medicalAttention.isMarked;
+  this.medicalAttention.type = this.medicalAttention.type || '';
+  this.medicalAttention.details = this.medicalAttention.details || '';
+  this.medicalAttention.markedBy = this.medicalAttention.markedBy || null;
+  this.medicalAttention.markedAt = this.medicalAttention.markedAt || null;
+  this.medicalAttention.updatedAt = this.medicalAttention.updatedAt || null;
+
+  next();
+});
+
+
+/* =========================
+   PRE-SAVE (AUDIT SAFETY)
+========================= */
+dairySchema.pre('save', function (next) {
+
+  // auto-update timestamp when medical changes
+  if (this.isModified('medicalAttention')) {
+    this.medicalAttention.updatedAt = new Date();
   }
 
   next();
 });
 
 
-// =========================
-// INDEXES
-// =========================
+/* =========================
+   INDEXES
+========================= */
+
+// Strong unique index
 dairySchema.index({ code: 1 }, { unique: true });
 
+// Optional: fast filtering later (very useful)
+dairySchema.index({ 'medicalAttention.isMarked': 1 });
 
-// =========================
-// EXPORT
-// =========================
+
+/* =========================
+   EXPORT
+========================= */
 module.exports = mongoose.model('Dairy', dairySchema);
