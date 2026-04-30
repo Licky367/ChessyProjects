@@ -1,0 +1,117 @@
+<% layout('layout', { title: 'Milking History' }) %>
+
+<div class="container">
+
+  <h2>Milking History</h2>
+
+  <!-- =========================
+       FILTER
+  ========================= -->
+  <form method="GET" class="filter">
+    <label>Select Month:</label>
+    <input type="month" name="month" value="<%= selectedMonth %>">
+    <button type="submit">Search</button>
+  </form>
+
+  <% if (!hasData) { %>
+    <p>No Milking History</p>
+  <% } else { %>
+
+    <!-- =========================
+         DAILY LOOP
+    ========================= -->
+    <% Object.keys(grouped).forEach(day => { %>
+
+      <div class="day-block">
+        <h3><%= day %></h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Liters</th>
+              <th>Remarks</th>
+              <th>Recorded By</th>
+            </tr>
+          </thead>
+          <tbody>
+
+            <% grouped[day].entries.forEach(entry => { %>
+              <tr>
+                <td>
+                  <%= new Date(entry.date).toLocaleTimeString() %>
+                </td>
+                <td><%= entry.liters %> L</td>
+                <td><%= entry.remarks || '-' %></td>
+                <td><%= entry.recordedBy?.name || 'Unknown' %></td>
+              </tr>
+            <% }) %>
+
+          </tbody>
+        </table>
+
+        <!-- DAILY TOTAL -->
+        <div class="daily-total">
+          Daily Total: <strong><%= grouped[day].total %> L</strong>
+        </div>
+
+      </div>
+
+    <% }) %>
+
+    <!-- =========================
+         MONTHLY TOTAL
+    ========================= -->
+    <div class="monthly-total">
+      <h3>Monthly Total: <%= monthlyTotal %> Liters</h3>
+    </div>
+
+  <% } %>
+
+</div>
+
+
+<style>
+.container {
+  padding: 20px;
+}
+
+.filter {
+  margin-bottom: 20px;
+}
+
+.day-block {
+  margin-bottom: 30px;
+  padding: 15px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th, td {
+  border: 1px solid #ddd;
+  padding: 8px;
+}
+
+th {
+  background: #f4f4f4;
+}
+
+.daily-total {
+  margin-top: 10px;
+  font-weight: bold;
+}
+
+.monthly-total {
+  margin-top: 30px;
+  padding: 15px;
+  background: #e3f2fd;
+  border-radius: 10px;
+  font-size: 18px;
+}
+</style>
