@@ -1,9 +1,7 @@
-// controllers/updateController.js
-
 const updateService = require('../services/updateService');
 
 /**
- * VIEW DAIRY UPDATE PAGE
+ * VIEW DAIRY PROFILE PAGE
  */
 exports.viewPage = async (req, res) => {
   try {
@@ -15,7 +13,7 @@ exports.viewPage = async (req, res) => {
       title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
-      user: req.user || null
+      user: req.session.user || null
     });
 
   } catch (err) {
@@ -27,14 +25,12 @@ exports.viewPage = async (req, res) => {
 
 /**
  * ADD COMMENT
+ * (Socket-ready version)
  */
 exports.comment = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!req.user) {
-      return res.status(401).send('Unauthorized');
-    }
+    const user = req.session.user;
 
     const comment = req.body.comment?.trim();
 
@@ -42,11 +38,24 @@ exports.comment = async (req, res) => {
       return res.status(400).send('Comment cannot be empty');
     }
 
-    await updateService.addComment({
+    const saved = await updateService.addComment({
       dairyId: id,
-      userId: req.user._id,
+      userId: user._id,
       comment
     });
+
+    /**
+     * SOCKET EMISSION (if enabled in app.js)
+     */
+    const io = req.app.get('io');
+    if (io) {
+      io.to(id).emit('commentAdded', {
+        _id: saved._id,
+        comment: saved.comment,
+        userName: user.name,
+        dateText: saved.createdAt.toDateString()
+      });
+    }
 
     return res.redirect(`/dairy/${id}`);
 
@@ -58,15 +67,12 @@ exports.comment = async (req, res) => {
 
 
 /**
- * UPDATE IMAGE + CREATE UPDATE LOG
+ * UPDATE IMAGE + LOG UPDATE
  */
 exports.image = async (req, res) => {
   try {
     const { id } = req.params;
-
-    if (!req.user) {
-      return res.status(401).send('Unauthorized');
-    }
+    const user = req.session.user;
 
     if (!req.file) {
       return res.status(400).send('No image uploaded');
@@ -74,9 +80,19 @@ exports.image = async (req, res) => {
 
     await updateService.updateImage({
       dairyId: id,
-      userId: req.user._id,
+      userId: user._id,
       image: req.file.filename
     });
+
+    /**
+     * OPTIONAL SOCKET EVENT (future gallery sync)
+     */
+    const io = req.app.get('io');
+    if (io) {
+      io.to(id).emit('imageUpdated', {
+        image: `/uploads/${req.file.filename}`
+      });
+    }
 
     return res.redirect(`/dairy/${id}`);
 
