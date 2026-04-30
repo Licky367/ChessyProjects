@@ -148,49 +148,49 @@ th{background:#f8f9fa;}
         <tbody>
 
           <!-- 🔥 ACTIVE STANDING ORDERS ONLY -->
+          <% let index = 0; %>
+
           <% if (standingOrders && standingOrders.length > 0) { %>
-            <% let index = 0; %>
 
-            <% standingOrders.forEach(o => { %>
-              <% if (!o.isFuture) { %>
-                <tr>
-                  <td>
-                    <%= o.customerName %>
-                    <input type="hidden" name="records[<%= index %>][customerName]" value="<%= o.customerName %>">
-                  </td>
-
-                  <td>
-                    <%= o.liters %>
-                    <input type="hidden" name="records[<%= index %>][liters]" value="<%= o.liters %>">
-                  </td>
-                </tr>
-                <% index++; %>
-              <% } %>
-            <% }) %>
-
-            <!-- 🔥 MANUAL ENTRIES -->
-            <% for(let i = 0; i < 5; i++) { %>
+            <% standingOrders.filter(o => !o.isFuture).forEach(o => { %>
               <tr>
                 <td>
-                  <input 
-                    type="text" 
-                    name="records[<%= index + i %>][customerName]" 
-                    placeholder="Customer name"
-                  >
+                  <%= o.customerName %>
+                  <input type="hidden" name="records[<%= index %>][customerName]" value="<%= o.customerName %>">
                 </td>
 
                 <td>
-                  <input 
-                    type="number" 
-                    step="0.1" 
-                    min="0"
-                    name="records[<%= index + i %>][liters]" 
-                    placeholder="Liters"
-                  >
+                  <%= o.liters %>
+                  <input type="hidden" name="records[<%= index %>][liters]" value="<%= o.liters %>">
                 </td>
               </tr>
-            <% } %>
 
+              <% index++; %>
+            <% }) %>
+
+          <% } %>
+
+          <!-- 🔥 MANUAL ENTRIES -->
+          <% for(let i = 0; i < 5; i++) { %>
+            <tr>
+              <td>
+                <input 
+                  type="text" 
+                  name="records[<%= index + i %>][customerName]" 
+                  placeholder="Customer name"
+                >
+              </td>
+
+              <td>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0"
+                  name="records[<%= index + i %>][liters]" 
+                  placeholder="Liters"
+                >
+              </td>
+            </tr>
           <% } %>
 
         </tbody>
