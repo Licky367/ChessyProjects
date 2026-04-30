@@ -1,246 +1,31 @@
 <!-- views/update.ejs -->
 
-<style>
-.card{
-background:#fff;
-border-radius:16px;
-padding:24px;
-box-shadow:0 8px 24px rgba(0,0,0,.06);
-}
-
-.profile-top{
-display:flex;
-align-items:flex-start;
-gap:16px;
-flex-wrap:nowrap;
-}
-
-.profile-left{
-flex:0 0 auto;
-}
-
-.profile-right{
-flex:1;
-min-width:0;
-}
-
-.avatar-img{
-width:74px;
-height:74px;
-border-radius:50%;
-object-fit:cover;
-cursor:pointer;
-border:3px solid #fff;
-box-shadow:0 4px 14px rgba(0,0,0,.15);
-transition:.2s ease;
-}
-
-.avatar-img:hover{
-transform:scale(1.03);
-}
-
-.name-row{
-display:flex;
-align-items:center;
-gap:10px;
-flex-wrap:wrap;
-margin-bottom:6px;
-}
-
-.name-row h2{
-font-size:24px;
-color:#0b5d1e;
-margin:0;
-}
-
-.meta{
-font-size:14px;
-color:#555;
-margin-bottom:7px;
-line-height:1.5;
-}
-
-.badge{
-padding:6px 10px;
-border-radius:16px;
-font-size:12px;
-color:#fff;
-display:inline-block;
-font-weight:600;
-}
-
-.bg-success{background:#198754;}
-.bg-secondary{background:#6c757d;}
-
-.editable{
-cursor:pointer;
-border-bottom:1px dashed #999;
-}
-
-.actions{
-margin-top:16px;
-padding-top:16px;
-border-top:1px solid #eee;
-}
-
-.btn{
-padding:10px 14px;
-border:none;
-border-radius:10px;
-cursor:pointer;
-font-weight:600;
-}
-
-.btn-danger{
-background:#dc3545;
-color:#fff;
-}
-
-.btn-primary{
-background:#0b5d1e;
-color:#fff;
-}
-
-.btn-outline-dark{
-background:#fff;
-border:1px solid #ddd;
-}
-
-/* ACTION SHEET */
-.fb-sheet{
-position:fixed;
-left:0;
-right:0;
-bottom:-420px;
-background:#fff;
-border-radius:18px 18px 0 0;
-box-shadow:0 -10px 30px rgba(0,0,0,.18);
-z-index:3000;
-transition:.25s ease;
-padding:15px;
-}
-
-.fb-sheet.show{
-bottom:0;
-}
-
-.fb-sheet button{
-display:block;
-width:100%;
-padding:14px;
-margin-bottom:8px;
-border:none;
-border-radius:10px;
-background:#f4f4f4;
-text-align:left;
-font-weight:600;
-cursor:pointer;
-}
-
-/* GALLERY */
-.gallery-box{
-position:relative;
-background:#111;
-text-align:center;
-}
-
-.gallery-img{
-width:100%;
-max-height:78vh;
-object-fit:contain;
-}
-
-.gallery-nav{
-position:absolute;
-top:50%;
-transform:translateY(-50%);
-background:rgba(255,255,255,.85);
-border:none;
-width:42px;
-height:42px;
-border-radius:50%;
-font-size:22px;
-cursor:pointer;
-}
-
-.gallery-prev{left:10px;}
-.gallery-next{right:10px;}
-
-.comment-item{
-padding:10px 0;
-border-bottom:1px solid #eee;
-}
-
-.comment-box{
-display:flex;
-gap:10px;
-margin-top:10px;
-}
-
-.comment-box textarea{
-flex:1;
-resize:none;
-padding:10px;
-border:1px solid #ddd;
-border-radius:10px;
-}
-
-@media(max-width:480px){
-.profile-top{
-flex-wrap:wrap;
-}
-
-.profile-right{
-width:100%;
-min-width:100%;
-}
-
-.name-row h2{
-font-size:20px;
-}
-}
-</style>
-
 <div class="container mt-4">
 
 <div class="card">
 
-<!-- PROFILE TOP -->
 <div class="profile-top">
 
-<!-- LEFT IMAGE -->
+<!-- LEFT -->
 <div class="profile-left">
 
-<% if (dairy.profileImage) { %>
 <img
-src="/uploads/<%= dairy.profileImage %>"
+src="<%= dairy.displayImage %>"
 alt="<%= dairy.name %>"
 id="profilePreview"
 class="avatar-img"
 >
-<% } else { %>
-<img
-src="https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=220"
-alt="<%= dairy.name %>"
-id="profilePreview"
-class="avatar-img"
->
-<% } %>
 
 </div>
 
-<!-- RIGHT DETAILS -->
+<!-- RIGHT -->
 <div class="profile-right">
 
 <div class="name-row">
 <h2>
 
-<% if (user && user.role === 'admin') { %>
-<span
-class="editable"
-data-field="name"
-data-value="<%= dairy.name %>"
->
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="name" data-value="<%= dairy.name %>">
 <%= dairy.name %>
 </span>
 <% } else { %>
@@ -253,12 +38,8 @@ data-value="<%= dairy.name %>"
 <div class="meta">
 <strong>Code:</strong>
 
-<% if (user && user.role === 'admin') { %>
-<span
-class="editable"
-data-field="code"
-data-value="<%= dairy.code %>"
->
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="code" data-value="<%= dairy.code %>">
 <%= dairy.code %>
 </span>
 <% } else { %>
@@ -267,60 +48,44 @@ data-value="<%= dairy.code %>"
 
 </div>
 
-<div class="meta">
-<strong>Gender:</strong> <%= dairy.gender %>
-</div>
-
-<div class="meta">
-<strong>Age:</strong> <span id="ageText"></span>
-</div>
+<% if (dairy.hasIdentity) { %>
+<div class="meta"><strong>Gender:</strong> <%= dairy.gender %></div>
+<div class="meta"><strong>Age:</strong> <%= dairy.ageText %></div>
+<% } %>
 
 <div class="meta">
 <strong>Mass:</strong>
 
-<% if (user && user.role === 'admin') { %>
-<span
-class="editable"
-data-field="mass"
-data-value="<%= dairy.mass || 0 %>"
->
-<%= dairy.mass || 0 %>
+<% if (user?.role === 'admin') { %>
+<span class="editable" data-field="mass" data-value="<%= dairy.mass %>">
+<%= dairy.mass %>
 </span>
 <% } else { %>
-<%= dairy.mass || 0 %>
+<%= dairy.mass %>
 <% } %>
 
 Kgs
 </div>
 
-<% if (dairy.gender === 'Female') { %>
+<% if (dairy.isFemale) { %>
 <div class="meta">
 
 <strong>Status:</strong>
 
-<% if (user && user.role === 'admin') { %>
+<% if (user?.role === 'admin') { %>
 
 <label>
-<input
-type="checkbox"
-id="milkingToggle"
-<%= dairy.isMilking ? 'checked' : '' %>
->
+<input type="checkbox" id="milkingToggle" <%= dairy.isMilking ? 'checked' : '' %>>
 
-<span
-id="milkBadge"
-class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>"
->
-<%= dairy.isMilking ? 'Being Milked' : 'Not Milked' %>
+<span id="milkBadge" class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+<%= dairy.isMilkingText %>
 </span>
 </label>
 
 <% } else { %>
 
-<span
-class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>"
->
-<%= dairy.isMilking ? 'Being Milked' : 'Not Milked' %>
+<span class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>">
+<%= dairy.isMilkingText %>
 </span>
 
 <% } %>
@@ -331,313 +96,45 @@ class="badge <%= dairy.isMilking ? 'bg-success' : 'bg-secondary' %>"
 </div>
 </div>
 
-<!-- ACTIONS -->
-<% if (user && user.role === 'admin') { %>
+<!-- DELETE -->
+<% if (user?.role === 'admin') { %>
 <div class="actions">
-
-<form
-action="/dairy/<%= dairy._id %>?_method=DELETE"
-method="POST"
-onsubmit="return confirm('Delete this profile permanently?')"
->
-<button class="btn btn-danger">
-Delete Profile
-</button>
+<form action="/dairy/<%= dairy._id %>?_method=DELETE" method="POST">
+<button class="btn btn-danger">Delete Profile</button>
 </form>
-
 </div>
 <% } %>
 
 </div>
 </div>
 
-<!-- IMAGE ACTION SHEET -->
-<div class="fb-sheet" id="imageSheet">
+<!-- COMMENTS -->
+<div class="container mt-3">
 
-<button onclick="openGallery()">👁 View Photo</button>
+<div class="card">
 
-<% if (user && user.role === 'admin') { %>
+<h4>Comments</h4>
 
-<button onclick="document.getElementById('imageInput').click()">
-📷 Change Photo
-</button>
-
-<form
-action="/dairy/<%= dairy._id %>/image?_method=DELETE"
-method="POST"
->
-<button type="submit">🗑 Delete Photo</button>
-</form>
-
-<% } %>
-
-<button onclick="closeSheet()">Cancel</button>
-
-</div>
-
-<!-- VIEW MODAL -->
-<div class="modal fade" id="viewImageModal" tabindex="-1">
-<div class="modal-dialog modal-dialog-centered modal-xl">
-<div class="modal-content border-0">
-
-<div class="gallery-box">
-
-<button
-class="gallery-nav gallery-prev"
-onclick="prevImage()"
-type="button"
->
-‹
-</button>
-
-<img
-id="galleryImage"
-class="gallery-img"
-src=""
->
-
-<button
-class="gallery-nav gallery-next"
-onclick="nextImage()"
-type="button"
->
-›
-</button>
-
-<div class="p-3 bg-white text-start">
-
-<button
-class="btn btn-outline-dark"
-data-bs-toggle="modal"
-data-bs-target="#commentsModal"
-type="button"
->
-💬 Comments
-</button>
-
-</div>
-
-</div>
-</div>
-</div>
-</div>
-
-<!-- COMMENTS MODAL -->
-<div class="modal fade" id="commentsModal" tabindex="-1">
-<div class="modal-dialog">
-<div class="modal-content">
-
-<div class="modal-header">
-<h5 class="modal-title">Comments</h5>
-<button class="btn-close" data-bs-dismiss="modal"></button>
-</div>
-
-<div class="modal-body">
-
-<% if (updates && updates.length) { %>
+<% if (updates.length) { %>
 
 <% updates.forEach(item => { %>
 <div class="comment-item">
-<strong><%= item.user?.name || 'User' %></strong><br>
+<strong><%= item.userName %></strong><br>
 <%= item.comment %><br>
-<small class="text-muted">
-<%= item.createdAt.toDateString() %>
-</small>
+<small><%= item.dateText %></small>
 </div>
 <% }) %>
 
 <% } else { %>
-
-<p class="text-muted">No comments yet.</p>
-
+<p>No comments yet.</p>
 <% } %>
 
 <% if (user) { %>
-
-<form
-action="/dairy/<%= dairy._id %>/comment"
-method="POST"
-class="comment-box"
->
-
-<textarea
-name="comment"
-rows="2"
-placeholder="Write comment..."
-required
-></textarea>
-
-<button class="btn btn-primary">
-Post
-</button>
-
+<form action="/dairy/<%= dairy._id %>/comment" method="POST" class="comment-box">
+<textarea name="comment" required></textarea>
+<button class="btn btn-primary">Post</button>
 </form>
-
 <% } %>
 
 </div>
 </div>
-</div>
-</div>
-
-<!-- CHANGE IMAGE -->
-<form
-id="uploadForm"
-action="/dairy/<%= dairy._id %>/image?_method=PUT"
-method="POST"
-enctype="multipart/form-data"
-style="display:none;"
->
-<input
-type="file"
-name="profileImage"
-id="imageInput"
-accept="image/*"
-onchange="document.getElementById('uploadForm').submit()"
->
-</form>
-
-<!-- INLINE EDIT -->
-<form id="inlineEditForm" method="POST" style="display:none;">
-<input type="hidden" name="_method" value="PUT">
-<input type="hidden" name="field" id="editField">
-<input type="hidden" name="value" id="editValue">
-</form>
-
-<script>
-/* AGE */
-(function(){
-const dob = "<%= dairy.dob ? dairy.dob.toISOString() : '' %>";
-if(!dob) return;
-
-const birth = new Date(dob);
-const now = new Date();
-
-let y = now.getFullYear() - birth.getFullYear();
-let m = now.getMonth() - birth.getMonth();
-let d = now.getDate() - birth.getDate();
-
-if(d < 0){
-m--;
-d += 30;
-}
-
-if(m < 0){
-y--;
-m += 12;
-}
-
-document.getElementById("ageText").innerText =
-y + " years, " + m + " months, " + d + " days";
-})();
-
-/* IMAGE LIST */
-const images = [
-
-<% if (dairy.profileImage) { %>
-"/uploads/<%= dairy.profileImage %>",
-<% } else { %>
-"https://ui-avatars.com/api/?name=<%= encodeURIComponent(dairy.name) %>&background=198754&color=fff&size=600",
-<% } %>
-
-"/uploads/sample-old-1.jpg",
-"/uploads/sample-old-2.jpg"
-
-];
-
-let currentIndex = 0;
-
-/* OPEN SHEET */
-document.getElementById("profilePreview")
-.addEventListener("click", function(){
-document.getElementById("imageSheet").classList.add("show");
-});
-
-function closeSheet(){
-document.getElementById("imageSheet").classList.remove("show");
-}
-
-/* GALLERY */
-function openGallery(){
-closeSheet();
-
-document.getElementById("galleryImage").src =
-images[currentIndex];
-
-new bootstrap.Modal(
-document.getElementById("viewImageModal")
-).show();
-}
-
-function nextImage(){
-currentIndex = (currentIndex + 1) % images.length;
-document.getElementById("galleryImage").src =
-images[currentIndex];
-}
-
-function prevImage(){
-currentIndex =
-(currentIndex - 1 + images.length) % images.length;
-
-document.getElementById("galleryImage").src =
-images[currentIndex];
-}
-
-/* INLINE EDIT */
-document.querySelectorAll(".editable")
-.forEach(el => {
-
-el.addEventListener("click", function(){
-
-const field = this.dataset.field;
-const current = this.dataset.value;
-
-const value = prompt(
-"Update " + field,
-current
-);
-
-if(value === null) return;
-
-document.getElementById("editField").value = field;
-document.getElementById("editValue").value = value;
-
-const form =
-document.getElementById("inlineEditForm");
-
-form.action = "/dairy/<%= dairy._id %>";
-form.submit();
-
-});
-
-});
-
-/* MILKING TOGGLE */
-document.getElementById("milkingToggle")
-?.addEventListener("change", function(){
-
-fetch("/dairy/<%= dairy._id %>/milking",{
-method:"POST",
-headers:{
-"Content-Type":"application/json"
-},
-body:JSON.stringify({
-isMilking:this.checked
-})
-});
-
-const badge =
-document.getElementById("milkBadge");
-
-if(this.checked){
-badge.innerText = "Being Milked";
-badge.classList.remove("bg-secondary");
-badge.classList.add("bg-success");
-}else{
-badge.innerText = "Not Milked";
-badge.classList.remove("bg-success");
-badge.classList.add("bg-secondary");
-}
-
-});
-</script>
