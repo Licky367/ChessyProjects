@@ -1,0 +1,122 @@
+<!-- views/structures.ejs -->
+
+<div class="container">
+
+  <h2 style="margin-bottom:15px;color:#0b5d1e;">Dairy Structures</h2>
+
+  <ul class="wa-list">
+
+    <% if (dairies && dairies.length > 0) { %>
+
+      <% dairies.forEach(dairy => { %>
+
+        <% if (dairy.code < 0) { %>
+
+          <li class="wa-item">
+            <a href="/dairy/<%= dairy._id %>" class="wa-link">
+
+              <div class="wa-avatar-box">
+
+                <% if (dairy.profileImage && dairy.profileImage.trim() !== "") { %>
+                  <img src="/uploads/<%= dairy.profileImage %>" class="wa-avatar">
+                <% } else { %>
+                  <img src="https://ui-avatars.com/api/?name=<%= dairy.name %>&background=0b5d1e&color=fff" class="wa-avatar">
+                <% } %>
+
+              </div>
+
+              <div class="wa-details">
+                <div class="wa-name"><%= dairy.name %></div>
+                <div class="wa-subtext">Facility Code: <%= dairy.code %></div>
+              </div>
+
+            </a>
+          </li>
+
+        <% } %>
+
+      <% }) %>
+
+    <% } else { %>
+
+      <p>No dairy structures found.</p>
+
+    <% } %>
+
+  </ul>
+
+</div>
+
+
+<style>
+/* ========================= */
+/* WHATSAPP STYLE LIST */
+/* ========================= */
+
+.container{
+  max-width:1000px;
+  margin:auto;
+}
+
+.wa-list{
+  list-style:none;
+  padding:0;
+  margin:0;
+  background:#fff;
+  border-radius:14px;
+  box-shadow:0 6px 18px rgba(0,0,0,.08);
+  overflow:hidden;
+}
+
+.wa-item{
+  border-bottom:1px solid #eee;
+}
+
+.wa-item:last-child{
+  border-bottom:none;
+}
+
+.wa-link{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:12px 14px;
+  text-decoration:none;
+  color:#222;
+  transition:.2s ease;
+}
+
+.wa-link:hover{
+  background:#f4f6f8;
+}
+
+.wa-avatar-box{
+  flex:0 0 auto;
+}
+
+.wa-avatar{
+  width:52px;
+  height:52px;
+  border-radius:50%;
+  object-fit:cover;
+  border:2px solid #0b5d1e;
+}
+
+.wa-details{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+
+.wa-name{
+  font-size:16px;
+  font-weight:bold;
+  color:#111;
+}
+
+.wa-subtext{
+  font-size:13px;
+  color:#666;
+  margin-top:3px;
+}
+</style>
