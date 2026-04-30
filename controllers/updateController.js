@@ -1,7 +1,56 @@
 const updateService = require('../services/updateService');
 
 /**
+ * ===========================
+ * VIEW DAIRY PROJECTS (POSITIVE CODES ONLY)
+ * renders: dairyProjects.ejs
+ * ===========================
+ */
+exports.viewDairyProjects = async (req, res) => {
+  try {
+    const dairies = await updateService.getPositiveDairies();
+
+    return res.render('dairyProjects', {
+      title: 'Dairy Projects',
+      dairies,
+      user: req.session.user || null
+    });
+
+  } catch (err) {
+    console.error('VIEW DAIRY PROJECTS ERROR:', err.message);
+    return res.status(500).send('Failed to load dairy projects');
+  }
+};
+
+
+/**
+ * ===========================
+ * VIEW STRUCTURES (NEGATIVE CODES ONLY)
+ * renders: structures.ejs
+ * ===========================
+ */
+exports.viewStructures = async (req, res) => {
+  try {
+    const dairies = await updateService.getNegativeDairies();
+
+    return res.render('structures', {
+      title: 'Structures',
+      dairies,
+      user: req.session.user || null
+    });
+
+  } catch (err) {
+    console.error('VIEW STRUCTURES ERROR:', err.message);
+    return res.status(500).send('Failed to load structures');
+  }
+};
+
+
+/**
+ * ===========================
  * VIEW DAIRY PROFILE PAGE
+ * renders: update.ejs
+ * ===========================
  */
 exports.viewPage = async (req, res) => {
   try {
@@ -24,8 +73,9 @@ exports.viewPage = async (req, res) => {
 
 
 /**
+ * ===========================
  * ADD COMMENT
- * (Socket-ready version)
+ * ===========================
  */
 exports.comment = async (req, res) => {
   try {
@@ -45,7 +95,7 @@ exports.comment = async (req, res) => {
     });
 
     /**
-     * SOCKET EMISSION (if enabled in app.js)
+     * SOCKET EMISSION
      */
     const io = req.app.get('io');
     if (io) {
@@ -67,7 +117,9 @@ exports.comment = async (req, res) => {
 
 
 /**
+ * ===========================
  * UPDATE IMAGE + LOG UPDATE
+ * ===========================
  */
 exports.image = async (req, res) => {
   try {
@@ -85,7 +137,7 @@ exports.image = async (req, res) => {
     });
 
     /**
-     * OPTIONAL SOCKET EVENT (future gallery sync)
+     * SOCKET EVENT
      */
     const io = req.app.get('io');
     if (io) {
