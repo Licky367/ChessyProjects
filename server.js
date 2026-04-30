@@ -14,11 +14,15 @@ const updateRoutes = require("./routes/update");
 // SOCKET HANDLER
 const socketHandler = require("./socket/socket");
 
+// ======================
 // INIT APP + SERVER
+// ======================
 const app = express();
 const server = http.createServer(app);
 
-// INIT SOCKET.IO
+// ======================
+// SOCKET.IO SETUP
+// ======================
 const io = new Server(server, {
   cors: {
     origin: "*",
@@ -26,7 +30,10 @@ const io = new Server(server, {
   }
 });
 
-// PASS IO TO SOCKET FILE
+// attach io globally (important for controllers/services)
+app.set("io", io);
+
+// initialize socket logic
 socketHandler(io);
 
 // ======================
@@ -85,7 +92,7 @@ app.use("/", authRoutes);
 app.use("/", updateRoutes);
 
 // ======================
-// HOME
+// HOME ROUTE
 // ======================
 app.get("/", (req, res) => {
   res.redirect("/create-invite");
