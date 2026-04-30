@@ -3,7 +3,7 @@ const Dairy = require('../models/dairy');
 
 
 // =========================
-// AGE CALCULATOR (FIXED)
+// AGE CALCULATOR
 // =========================
 function calculateAge(dob) {
   if (!dob) return null;
@@ -40,7 +40,7 @@ function formatDate(date) {
 
 
 // =========================
-// FORMAT DAIRY (FB STYLE PROFILE)
+// FORMAT DAIRY (PROFILE PAGE)
 // =========================
 exports.formatDairy = (dairy, imageUpdates = []) => {
 
@@ -64,13 +64,11 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
     mass: dairy.mass || 0,
 
     displayImage: latestImage,
-    images, // full gallery
+    images,
 
     hasIdentity,
-
     gender: hasIdentity ? dairy.gender : null,
     isFemale: dairy.gender === 'Female',
-
     ageText: hasIdentity ? calculateAge(dairy.dob) : null,
 
     isMilking: dairy.isMilking,
@@ -80,7 +78,7 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
 
 
 // =========================
-// FORMAT COMMENTS ONLY
+// FORMAT COMMENTS
 // =========================
 exports.formatUpdates = (updates = []) => {
 
@@ -95,7 +93,7 @@ exports.formatUpdates = (updates = []) => {
 
 
 // =========================
-// GET PAGE DATA
+// GET PROFILE PAGE DATA
 // =========================
 exports.getDairyPage = async (id) => {
 
@@ -118,15 +116,47 @@ exports.getDairyPage = async (id) => {
 
 
 // =========================
+// 🔥 NEW: POSITIVE DAIRIES (PROJECTS)
+// =========================
+exports.getPositiveDairies = async () => {
+
+  const dairies = await Dairy.find({ code: { $gt: 0 } })
+    .sort({ createdAt: -1 });
+
+  return dairies.map(d => ({
+    _id: d._id,
+    name: d.name,
+    code: d.code,
+    profileImage: d.profileImage
+  }));
+};
+
+
+// =========================
+// 🔥 NEW: NEGATIVE DAIRIES (STRUCTURES)
+// =========================
+exports.getNegativeDairies = async () => {
+
+  const dairies = await Dairy.find({ code: { $lt: 0 } })
+    .sort({ createdAt: -1 });
+
+  return dairies.map(d => ({
+    _id: d._id,
+    name: d.name,
+    code: d.code,
+    profileImage: d.profileImage
+  }));
+};
+
+
+// =========================
 // ADD COMMENT
 // =========================
 exports.addComment = async ({ dairyId, userId, comment }) => {
 
   const clean = comment?.trim();
 
-  if (!clean) {
-    throw new Error('Comment is required');
-  }
+  if (!clean) throw new Error('Comment is required');
 
   return Update.create({
     dairy: dairyId,
@@ -142,16 +172,12 @@ exports.addComment = async ({ dairyId, userId, comment }) => {
 // =========================
 exports.updateImage = async ({ dairyId, userId, image }) => {
 
-  if (!image) {
-    throw new Error('Image is required');
-  }
+  if (!image) throw new Error('Image is required');
 
-  // update main profile image
   await Dairy.findByIdAndUpdate(dairyId, {
     profileImage: image
   });
 
-  // store history
   return Update.create({
     dairy: dairyId,
     user: userId,
