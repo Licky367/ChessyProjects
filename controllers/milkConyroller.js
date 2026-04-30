@@ -37,8 +37,7 @@ exports.getMilkStats = async (req, res) => {
     const { type = "day", date, month } = req.query;
 
     if (type === "day") {
-      const selectedDate =
-        date || new Date().toISOString().split("T")[0];
+      const selectedDate = date || new Date().toISOString().split("T")[0];
 
       const data = await milkService.getDailyStats(selectedDate);
 
@@ -51,8 +50,7 @@ exports.getMilkStats = async (req, res) => {
     }
 
     if (type === "month") {
-      const selectedMonth =
-        month || new Date().toISOString().slice(0, 7);
+      const selectedMonth = month || new Date().toISOString().slice(0, 7);
 
       const data = await milkService.getMonthlyStats(selectedMonth);
 
@@ -78,19 +76,97 @@ exports.getMilkStats = async (req, res) => {
 
 
 /* =========================
-   SAVE DAILY STATS
+   SAVE DAILY STATS (LOCK SYSTEM)
+   (Now derived from SALES ONLY)
 ========================= */
 exports.saveDailyStats = async (req, res) => {
   try {
-    const { date, consumed, price } = req.body;
+    const { date, price } = req.body;
 
-    await milkService.saveDailyStats({
+    await milkService.lockDailyStats({
       date,
-      consumed: Number(consumed),
       price: Number(price)
     });
 
     res.redirect(`/milk/stats?type=day&date=${date}`);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+};
+
+
+/* =========================
+   🔥 SALES SYSTEM (NEW)
+========================= */
+
+/* GET SALES PAGE */
+exports.getSalesPage = async (req, res) => {
+  try {
+    const data = await milkService.getSalesPageData();
+
+    res.render("sales", {
+      standingOrders: data.standingOrders
+    });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error loading sales page");
+  }
+};
+
+
+/* SUBMIT DAILY SALES */
+exports.submitSales = async (req, res) => {
+  try {
+    const { records, price } = req.body;
+
+    const result = await milkService.processDailySales({
+      records,
+      price: Number(price),
+      user: req.user
+    });
+
+    res.redirect(`/milk/stats?type=day&date=${result.date}`);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+};
+
+
+/* ADD STANDING ORDER */
+exports.addStandingOrder = async (req, res) => {
+  try {
+    const { customerName, liters } = req.body;
+
+    await milkService.addStandingOrder({
+      customerName,
+      liters
+    });
+
+    res.redirect("/sales");
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).send(err.message);
+  }
+};
+
+
+/* OMIT STANDING ORDER (ADMIN ONLY LOGIC IN SERVICE) */
+exports.omitStandingOrder = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    await milkService.omitStandingOrder({
+      orderId: id,
+      user: req.user
+    });
+
+    res.redirect("/sales");
+
   } catch (err) {
     console.error(err);
     res.status(500).send(err.message);
