@@ -16,11 +16,15 @@ exports.getMilkingAnimals = async () => {
 exports.saveMilkRecords = async (records, userId) => {
   if (!records || !records.length) return;
 
+  if (!userId) {
+    throw new Error("User ID is required to record milk.");
+  }
+
   const docs = records.map(r => ({
     dairy: r.dairy,
     liters: Number(r.liters),
     remarks: r.remarks || "",
-    recordedBy: userId || null
+    recordedBy: userId // 🔥 REQUIRED
   }));
 
   return Milk.insertMany(docs);
@@ -37,7 +41,6 @@ exports.getDailyStats = async (day) => {
 
 /* =========================
    SAVE DAILY STATS (LOCKED)
-   (ADMIN ONLY CONTROLLED IN CONTROLLER)
 ========================= */
 exports.saveDailyStats = async ({ date, consumed, price }) => {
   const day = new Date(date).toISOString().split("T")[0];
@@ -57,13 +60,13 @@ exports.getMonthlyStats = async (month) => {
   const records = await Milk.getMonthlyReport(month);
 
   const dairies = await Dairy.find({
-    _id: { $in: records.map(r => r.dairy) }
+    _id: { $in: records.records.map(r => r.dairy) }
   });
 
   const map = {};
   dairies.forEach(d => (map[d._id] = d));
 
-  const formatted = records.map(r => ({
+  const formatted = records.records.map(r => ({
     dairy: map[r.dairy],
     total: r.total,
     avg: r.avg
@@ -71,8 +74,7 @@ exports.getMonthlyStats = async (month) => {
 
 
   /* =========================
-     🔥 FIXED CASH LOGIC
-     (USE DAILY SNAPSHOTS FROM MODEL)
+     FIXED CASH LOGIC
   ========================= */
   const cashAgg = await Milk.aggregate([
     { $match: { month } },
@@ -85,11 +87,7 @@ exports.getMonthlyStats = async (month) => {
       }
     },
 
-    {
-      $match: {
-        locked: true
-      }
-    },
+    { $match: { locked: true } },
 
     {
       $group: {
@@ -116,7 +114,7 @@ exports.getMonthlyStats = async (month) => {
 
 
 /* =========================
-   🔥 SALES ENGINE CORE
+   SALES ENGINE CORE
 ========================= */
 
 /* GET SALES PAGE DATA */
@@ -146,18 +144,10 @@ exports.processDailySales = async ({ records, price, user }) => {
 
   if (!records || !records.length) return { day };
 
-
-  /* =========================
-     TOTAL CONSUMPTION
-  ========================= */
   const consumed = records.reduce((sum, r) => {
     return sum + (Number(r.liters) || 0);
   }, 0);
 
-
-  /* =========================
-     UPDATE DAILY STATS
-  ========================= */
   await Milk.saveDailyStats({
     day,
     consumed,
@@ -201,4 +191,53 @@ exports.omitStandingOrder = async ({ orderId, user }) => {
       }
     }
   );
+};
+
+
+/* =========================
+   🆕 MILKING HISTORY (PER ANIMAL)
+========================= */
+exports.getMilkingHistory = async ({ dairyId, month }) => {
+
+  const filter = { dairy: dairyId };
+
+  if (month) {
+    filter.month = month; // YYYY-MM
+  }
+
+  const records = await Milk.find(filter)
+    .populate("recordedBy", "name")
+    .sort({ date: 1 })
+    .lean();
+
+
+  /* =========================
+     GROUP BY DAY
+  ========================= */
+  const grouped = {};
+
+  records.forEach(r => {
+    if (!grouped[r.day]) {
+      grouped[r.day] = {
+        entries: [],
+        total: 0
+      };
+    }
+
+    grouped[r.day].entries.push(r);
+    grouped[r.day].total += r.liters;
+  });
+
+
+  /* =========================
+     MONTHLY TOTAL
+  ========================= */
+  const monthlyTotal = records.reduce((sum, r) => sum + r.liters, 0);
+
+
+  return {
+    grouped,
+    monthlyTotal,
+    hasData: records.length > 0
+  };
 };
