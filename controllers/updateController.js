@@ -10,7 +10,7 @@ exports.viewDairyProjects = async (req, res) => {
   try {
     const dairies = await updateService.getPositiveDairies();
 
-    return res.render('dairyProjects', {
+    res.render('dairyProjects', {
       title: 'Dairy Projects',
       dairies,
       user: req.session.user || null
@@ -18,7 +18,7 @@ exports.viewDairyProjects = async (req, res) => {
 
   } catch (err) {
     console.error('VIEW DAIRY PROJECTS ERROR:', err.message);
-    return res.status(500).send('Failed to load dairy projects');
+    res.status(500).send('Failed to load dairy projects');
   }
 };
 
@@ -32,7 +32,7 @@ exports.viewStructures = async (req, res) => {
   try {
     const dairies = await updateService.getNegativeDairies();
 
-    return res.render('structures', {
+    res.render('structures', {
       title: 'Structures',
       dairies,
       user: req.session.user || null
@@ -40,7 +40,7 @@ exports.viewStructures = async (req, res) => {
 
   } catch (err) {
     console.error('VIEW STRUCTURES ERROR:', err.message);
-    return res.status(500).send('Failed to load structures');
+    res.status(500).send('Failed to load structures');
   }
 };
 
@@ -56,7 +56,7 @@ exports.viewPage = async (req, res) => {
 
     const data = await updateService.getDairyPage(id);
 
-    return res.render('update', {
+    res.render('update', {
       title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
@@ -65,14 +65,14 @@ exports.viewPage = async (req, res) => {
 
   } catch (err) {
     console.error('VIEW PAGE ERROR:', err.message);
-    return res.status(500).send('Failed to load dairy profile');
+    res.status(500).send('Failed to load dairy profile');
   }
 };
 
 
 /**
  * ===========================
- * ADD COMMENT
+ * ADD COMMENT (🔥 FIXED)
  * ===========================
  */
 exports.comment = async (req, res) => {
@@ -82,8 +82,8 @@ exports.comment = async (req, res) => {
 
     const comment = req.body.comment?.trim();
 
-    if (!user) return res.status(401).send('Unauthorized');
-    if (!comment) return res.status(400).send('Comment cannot be empty');
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!comment) return res.status(400).json({ error: 'Comment cannot be empty' });
 
     const saved = await updateService.addComment({
       dairyId: id,
@@ -91,22 +91,29 @@ exports.comment = async (req, res) => {
       comment
     });
 
-    const io = req.app.get('io');
+    const payload = {
+      _id: saved._id,
+      comment: saved.comment,
+      userName: user.name,
+      dateText: new Date(saved.createdAt).toLocaleString()
+    };
 
+    // 🔥 SOCKET REALTIME
+    const io = req.app.get('io');
     if (io) {
-      io.to(id).emit('commentAdded', {
-        _id: saved._id,
-        comment: saved.comment,
-        userName: user.name,
-        dateText: new Date(saved.createdAt).toLocaleString()
-      });
+      io.to(id).emit('commentAdded', payload);
+    }
+
+    // 🔥 SUPPORT AJAX + FORM
+    if (req.xhr || req.headers.accept.includes('json')) {
+      return res.json(payload);
     }
 
     return res.redirect(`/dairy/${id}`);
 
   } catch (err) {
     console.error('COMMENT ERROR:', err.message);
-    return res.status(500).send('Failed to post comment');
+    res.status(500).json({ error: 'Failed to post comment' });
   }
 };
 
@@ -138,18 +145,18 @@ exports.image = async (req, res) => {
       });
     }
 
-    return res.redirect(`/dairy/${id}`);
+    res.redirect(`/dairy/${id}`);
 
   } catch (err) {
     console.error('IMAGE UPDATE ERROR:', err.message);
-    return res.status(500).send('Failed to update image');
+    res.status(500).send('Failed to update image');
   }
 };
 
 
 /**
  * ===========================
- * MARK MEDICAL ATTENTION (dairyWorker only)
+ * MARK MEDICAL ATTENTION
  * ===========================
  */
 exports.markMedicalAttention = async (req, res) => {
@@ -169,7 +176,6 @@ exports.markMedicalAttention = async (req, res) => {
       return res.status(400).send('Medical type and details are required');
     }
 
-    // 🔥 UPDATE DB (CRITICAL FIX: ensure persistence)
     const updated = await updateService.markMedicalAttention({
       dairyId: id,
       userId: user._id,
@@ -177,30 +183,32 @@ exports.markMedicalAttention = async (req, res) => {
       details: details.trim()
     });
 
+    const payload = {
+      dairyId: id,
+      type: updated.medicalAttention.type,
+      details: updated.medicalAttention.details,
+      userName: user.name,
+      dateText: new Date(updated.medicalAttention.markedAt).toLocaleString()
+    };
+
     const io = req.app.get('io');
 
     if (io) {
-      io.to(id).emit('medicalMarked', {
-        dairyId: id,
-        type: updated.medicalAttention.type,
-        details: updated.medicalAttention.details,
-        userName: user.name,
-        dateText: new Date(updated.medicalAttention.markedAt).toLocaleString()
-      });
+      io.to(id).emit('medicalMarked', payload);
     }
 
-    return res.redirect(`/dairy/${id}`);
+    res.redirect(`/dairy/${id}`);
 
   } catch (err) {
     console.error('MEDICAL MARK ERROR:', err.message);
-    return res.status(500).send('Failed to mark medical attention');
+    res.status(500).send('Failed to mark medical attention');
   }
 };
 
 
 /**
  * ===========================
- * UNMARK MEDICAL ATTENTION (admin only)
+ * UNMARK MEDICAL ATTENTION
  * ===========================
  */
 exports.unmarkMedicalAttention = async (req, res) => {
@@ -214,7 +222,6 @@ exports.unmarkMedicalAttention = async (req, res) => {
       return res.status(403).send('Only admin can unmark medical attention');
     }
 
-    // 🔥 UPDATE DB (ENSURE CLEAN RESET)
     await updateService.unmarkMedicalAttention({
       dairyId: id
     });
@@ -230,10 +237,10 @@ exports.unmarkMedicalAttention = async (req, res) => {
       });
     }
 
-    return res.redirect(`/dairy/${id}`);
+    res.redirect(`/dairy/${id}`);
 
   } catch (err) {
     console.error('MEDICAL UNMARK ERROR:', err.message);
-    return res.status(500).send('Failed to unmark medical attention');
+    res.status(500).send('Failed to unmark medical attention');
   }
 };
