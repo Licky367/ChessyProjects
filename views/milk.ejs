@@ -1,0 +1,121 @@
+<% layout('layout', { title: 'Milk Collection' }) %>
+
+<style>
+.page{
+  max-width:1100px;
+  margin:auto;
+}
+
+.card{
+  background:#fff;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 8px 20px rgba(0,0,0,.05);
+}
+
+h2{
+  margin-bottom:20px;
+}
+
+table{
+  width:100%;
+  border-collapse:collapse;
+}
+
+th, td{
+  padding:12px;
+  text-align:left;
+  border-bottom:1px solid #eee;
+}
+
+th{
+  background:#f8f9fa;
+}
+
+input, textarea{
+  width:100%;
+  padding:8px;
+  border-radius:6px;
+  border:1px solid #ddd;
+}
+
+textarea{
+  resize:none;
+  height:40px;
+}
+
+.submit-btn{
+  margin-top:20px;
+  background:#0b5d1e;
+  color:white;
+  padding:12px 20px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.empty{
+  text-align:center;
+  padding:30px;
+  color:#888;
+}
+</style>
+
+
+<div class="page">
+  <div class="card">
+
+    <h2>Milk Collection</h2>
+
+    <% if (!dairies || dairies.length === 0) { %>
+      <div class="empty">No animals currently being milked.</div>
+    <% } else { %>
+
+    <form action="/milk" method="POST">
+
+      <table>
+        <thead>
+          <tr>
+            <th>Code</th>
+            <th>Name</th>
+            <th>Milk (Liters)</th>
+            <th>Remarks</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% dairies.forEach((dairy, index) => { %>
+            <tr>
+              <td>
+                <%= dairy.code %>
+                <input type="hidden" name="records[<%= index %>][dairy]" value="<%= dairy._id %>">
+              </td>
+
+              <td><%= dairy.name %></td>
+
+              <td>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  min="0" 
+                  name="records[<%= index %>][liters]" 
+                  required
+                >
+              </td>
+
+              <td>
+                <textarea name="records[<%= index %>][remarks]"></textarea>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <button class="submit-btn">Submit Milk Records</button>
+
+    </form>
+
+    <% } %>
+
+  </div>
+</div>
