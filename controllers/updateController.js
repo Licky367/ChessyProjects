@@ -60,6 +60,7 @@ exports.viewPage = async (req, res) => {
       title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
+      commentCount: data.commentCount, // ✅ IMPORTANT
       user: req.session.user || null
     });
 
@@ -72,7 +73,7 @@ exports.viewPage = async (req, res) => {
 
 /**
  * ===========================
- * ADD COMMENT (🔥 FIXED)
+ * ADD COMMENT (FINAL)
  * ===========================
  */
 exports.comment = async (req, res) => {
@@ -82,8 +83,13 @@ exports.comment = async (req, res) => {
 
     const comment = req.body.comment?.trim();
 
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
-    if (!comment) return res.status(400).json({ error: 'Comment cannot be empty' });
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    if (!comment) {
+      return res.status(400).json({ error: 'Comment cannot be empty' });
+    }
 
     const saved = await updateService.addComment({
       dairyId: id,
@@ -95,17 +101,22 @@ exports.comment = async (req, res) => {
       _id: saved._id,
       comment: saved.comment,
       userName: user.name,
-      dateText: new Date(saved.createdAt).toLocaleString()
+      dateText: new Date(saved.createdAt).toLocaleString(),
+      createdAt: saved.createdAt
     };
 
-    // 🔥 SOCKET REALTIME
+    /* SOCKET */
     const io = req.app.get('io');
     if (io) {
       io.to(id).emit('commentAdded', payload);
     }
 
-    // 🔥 SUPPORT AJAX + FORM
-    if (req.xhr || req.headers.accept.includes('json')) {
+    /* AJAX vs FORM */
+    const wantsJSON =
+      req.xhr ||
+      req.headers.accept?.includes('json');
+
+    if (wantsJSON) {
       return res.json(payload);
     }
 
