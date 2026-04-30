@@ -17,15 +17,24 @@ module.exports = function (io) {
 
 
     // =========================
+    // ATTACH USER (IMPORTANT FIX)
+    // =========================
+    socket.on('setUser', (user) => {
+      socket.user = user;
+    });
+
+
+    // =========================
     // NEW COMMENT (REAL-TIME)
     // =========================
     socket.on('newComment', async (data) => {
       try {
 
-        const { dairyId, comment } = data;
-        const user = socket.user; // will be attached from middleware (below)
+        const { dairyId, comment, userName, userId } = data;
 
-        if (!user) return;
+        const user = socket.user || { _id: userId, name: userName };
+
+        if (!user || !comment || !dairyId) return;
 
         const saved = await updateService.addComment({
           dairyId,
@@ -33,14 +42,12 @@ module.exports = function (io) {
           comment
         });
 
-        const payload = {
+        io.to(dairyId).emit('commentAdded', {
           _id: saved._id,
           comment: saved.comment,
           userName: user.name,
           dateText: new Date(saved.createdAt).toLocaleString()
-        };
-
-        io.to(dairyId).emit('commentAdded', payload);
+        });
 
       } catch (err) {
         console.error('Socket comment error:', err.message);
@@ -51,10 +58,11 @@ module.exports = function (io) {
     // =========================
     // IMAGE UPDATE BROADCAST
     // =========================
-    socket.on('imageUpdated', async (data) => {
+    socket.on('imageUpdated', (data) => {
       try {
 
         const { dairyId, image } = data;
+        if (!dairyId || !image) return;
 
         io.to(dairyId).emit('imageChanged', {
           image
@@ -66,6 +74,52 @@ module.exports = function (io) {
     });
 
 
+    // =========================
+    // 🚑 MEDICAL ATTENTION MARKED
+    // =========================
+    socket.on('medicalMarked', (data) => {
+      try {
+
+        const { dairyId, type, details, userName } = data;
+
+        if (!dairyId) return;
+
+        io.to(dairyId).emit('medicalMarked', {
+          type,
+          details,
+          userName: userName || 'System',
+          dateText: new Date().toLocaleString()
+        });
+
+      } catch (err) {
+        console.error('Socket medical mark error:', err.message);
+      }
+    });
+
+
+    // =========================
+    // 🚑 MEDICAL ATTENTION UNMARKED
+    // =========================
+    socket.on('medicalUnmarked', (data) => {
+      try {
+
+        const { dairyId } = data;
+
+        if (!dairyId) return;
+
+        io.to(dairyId).emit('medicalUnmarked', {
+          cleared: true
+        });
+
+      } catch (err) {
+        console.error('Socket medical unmark error:', err.message);
+      }
+    });
+
+
+    // =========================
+    // DISCONNECT
+    // =========================
     socket.on('disconnect', () => {
       console.log('❌ User disconnected:', socket.id);
     });
