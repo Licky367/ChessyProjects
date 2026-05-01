@@ -1,74 +1,112 @@
-const financialService = require("../services/financialsServices");
+const Milk = require("../models/milk");
+const Update = require("../models/Update");
+const Financial = require("../models/financials");
 
 
 /* =========================
-   DAILY FINANCIALS
+   FINANCIAL DASHBOARD VIEW
 ========================= */
-exports.getDailyFinancials = async (req, res) => {
+exports.financialsView = async (req, res) => {
   try {
-    const { day } = req.query;
 
-    const result = await financialService.computeDailyFinancials(day);
+    const { day, month, year, type = "monthly" } = req.query;
 
-    res.json(result);
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    let financial = null;
+    let sales = [];
+    let expenses = [];
+    let totalSalesCash = 0;
+    let totalExpenses = 0;
 
 
-/* =========================
-   MONTHLY FINANCIALS
-========================= */
-exports.getMonthlyFinancials = async (req, res) => {
-  try {
-    const { month } = req.query;
-
-    const result = await financialService.computeMonthlyFinancials(month);
-
-    res.json(result);
-
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    /* =========================
+       1. GET STORED FINANCIAL RECORD
+    ========================= */
+    financial = await Financial.findOne({
+      periodType: type,
+      ...(day && { day }),
+      ...(month && { month }),
+      ...(year && { year: Number(year) })
+    });
 
 
-/* =========================
-   YEARLY FINANCIALS
-========================= */
-exports.getYearlyFinancials = async (req, res) => {
-  try {
-    const { year } = req.query;
+    /* =========================
+       2. MILK SALES (INCOME DETAIL)
+    ========================= */
+    const milkMatch = {};
 
-    const result = await financialService.computeYearlyFinancials(Number(year));
+    if (day) milkMatch.day = day;
+    if (month) milkMatch.month = month;
+    if (year) {
+      milkMatch.$expr = {
+        $eq: [{ $year: "$date" }, Number(year)]
+      };
+    }
 
-    res.json(result);
+    const milkDocs = await Milk.find(milkMatch).lean();
 
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
+    milkDocs.forEach(doc => {
+      if (doc.sales?.length) {
+        doc.sales.forEach(s => {
+          sales.push(s);
+          totalSalesCash += s.cash || 0;
+        });
+      }
+    });
 
 
-/* =========================
-   FETCH STORED FINANCIALS
-========================= */
-exports.getFinancialRecord = async (req, res) => {
-  try {
-    const { day, month, year, type } = req.query;
+    /* =========================
+       3. EXPENSES (UPDATE MODEL)
+    ========================= */
+    const expenseMatch = {};
 
-    const result = await financialService.getFinancials({
+    if (month) {
+      expenseMatch.month = month;
+    } else if (year) {
+      expenseMatch.$expr = {
+        $eq: [{ $year: "$createdAt" }, Number(year)]
+      };
+    }
+
+    const updateDocs = await Update.find(expenseMatch).lean();
+
+    updateDocs.forEach(u => {
+      if (u.type === "maintenance") {
+        expenses.push({
+          type: "maintenance",
+          maintenance: u.maintenance,
+          charges: u.maintenance?.charges || 0
+        });
+        totalExpenses += u.maintenance?.charges || 0;
+      }
+
+      if (u.type === "medical") {
+        expenses.push({
+          type: "medical",
+          medical: u.medical,
+          charges: u.medical?.charges || 0
+        });
+        totalExpenses += u.medical?.charges || 0;
+      }
+    });
+
+
+    /* =========================
+       4. RENDER VIEW
+    ========================= */
+    return res.render("financials", {
+      financial,
+      sales,
+      expenses,
+      totalSalesCash,
+      totalExpenses,
       day,
       month,
-      year: Number(year),
+      year,
       type
     });
 
-    res.json(result);
-
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err);
+    return res.status(500).send("Error loading financial dashboard");
   }
 };
