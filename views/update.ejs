@@ -103,12 +103,13 @@ required
 
 
 <!-- ========================= -->
-<!-- 🟦 UNIFIED FEED (CORE) -->
+<!-- 🟦 UNIFIED FEED -->
 <!-- ========================= -->
 
 <div id="feed">
 
 <% feed.forEach(item => { %>
+
 
 <!-- ================= POST ================= -->
 <% if (item.type === 'post') { %>
@@ -262,6 +263,56 @@ Average: <%= item.average %> L/day
 
 <% } %>
 
+
+<!-- ================= MAINTENANCE (NEW) ================= -->
+<% if (item.type === 'maintenance') { %>
+
+<div class="feed-card maintenance">
+
+<div class="feed-header">
+
+<div class="feed-user">
+<img src="<%= item.userImage %>" class="avatar-sm">
+
+<div>
+
+<strong>
+<% if (item.status === 'marked') { %>
+🔧 Maintenance Required
+<% } else { %>
+✅ Maintenance Cleared
+<% } %>
+</strong>
+
+<small><%= item.dateText %></small>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="feed-body">
+
+<% if (item.status === 'marked') { %>
+
+<p><strong>Type:</strong> <%= item.maintenanceType %></p>
+<p><%= item.description %></p>
+
+<% } else { %>
+
+<p><strong>Charges:</strong> KES <%= item.charges %></p>
+<p><%= item.description %></p>
+
+<% } %>
+
+</div>
+
+</div>
+
+<% } %>
+
+
 <% }) %>
 
 </div>
@@ -283,13 +334,9 @@ border-radius:10px;
 box-shadow:0 3px 8px rgba(0,0,0,.08);
 }
 
-.feed-card.system{
-border-left:5px solid #198754;
-}
-
-.feed-card.medical{
-border-left:5px solid #c62828;
-}
+.feed-card.system{ border-left:5px solid #198754; }
+.feed-card.medical{ border-left:5px solid #c62828; }
+.feed-card.maintenance{ border-left:5px solid #6f42c1; }
 
 .feed-header{
 display:flex;
