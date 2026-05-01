@@ -11,7 +11,7 @@ const createRoutes = require("./routes/create");
 const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
 const milkRoutes = require("./routes/milk");
-const createRoutes = require("./routes/new");
+const newRoutes = require("./routes/new");
 
 // SOCKET HANDLER
 const socketHandler = require("./socket/socket");
@@ -93,6 +93,7 @@ app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 app.use("/", milkRoutes);
+app.use("/", newRoutes);
 
 // ======================
 // HOME ROUTE
