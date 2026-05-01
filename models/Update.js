@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+
+/* =========================
+   COMMENT SUB-SCHEMA
+========================= */
 const commentSchema = new mongoose.Schema({
   _id: {
     type: String,
@@ -18,6 +22,9 @@ const commentSchema = new mongoose.Schema({
 }, { _id: false });
 
 
+/* =========================
+   MAIN UPDATE SCHEMA
+========================= */
 const updateSchema = new mongoose.Schema({
 
   /* =========================
@@ -37,25 +44,32 @@ const updateSchema = new mongoose.Schema({
   },
 
   /* =========================
-     CORE CONTENT TYPES
+     TYPE SYSTEM
   ========================= */
-
   type: {
     type: String,
     enum: [
-      'image',        // profile/image update
-      'comment',      // dairy/medical comment
-      'post',         // social feed post
-      'medical'       // optional medical log entry
+      'image',
+      'comment',
+      'post',
+      'medical'
     ],
     required: true,
     index: true
   },
 
   /* =========================
-     POST / FEED CONTENT
+     🔥 LEGACY + MEDICAL COMMENTS
   ========================= */
+  comment: {
+    type: String,
+    trim: true,
+    maxlength: 500
+  },
 
+  /* =========================
+     POST CONTENT
+  ========================= */
   text: {
     type: String,
     trim: true,
@@ -70,7 +84,6 @@ const updateSchema = new mongoose.Schema({
   /* =========================
      SOCIAL FEATURES
   ========================= */
-
   likes: [
     {
       type: mongoose.Schema.Types.ObjectId,
@@ -81,9 +94,8 @@ const updateSchema = new mongoose.Schema({
   comments: [commentSchema],
 
   /* =========================
-     MEDICAL SNAPSHOT (OPTIONAL)
+     OPTIONAL MEDICAL SNAPSHOT
   ========================= */
-
   medical: {
     isMarked: { type: Boolean, default: false },
     type: String,
@@ -101,9 +113,10 @@ const updateSchema = new mongoose.Schema({
 
 
 /* =========================
-   INDEXES (IMPORTANT FOR FEED SPEED)
+   INDEXES (PERFORMANCE)
 ========================= */
 updateSchema.index({ dairy: 1, createdAt: -1 });
 updateSchema.index({ type: 1 });
+
 
 module.exports = mongoose.model('Update', updateSchema);
