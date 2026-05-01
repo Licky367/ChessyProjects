@@ -38,6 +38,7 @@
 <div class="meta"><strong>Age:</strong> <%= dairy.ageText %></div>
 <% } %>
 
+<% if (dairy.hasIdentity) { %>
 <div class="meta">
 <strong>Mass:</strong>
 <% if (user?.role === 'admin') { %>
@@ -46,6 +47,7 @@
 <%= dairy.mass %>
 <% } %> Kgs
 </div>
+<% } %>
 
 <% if (dairy.isFemale) { %>
 <div class="meta">
