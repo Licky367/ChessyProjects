@@ -41,7 +41,7 @@ function formatDate(date) {
 
 
 /* =========================
-   WEEK RANGE
+   WEEK RANGE (MON → SUN)
 ========================= */
 function getWeekRange(date) {
   const d = new Date(date);
@@ -62,7 +62,7 @@ function getWeekRange(date) {
 
 
 /* =========================
-   MILK → WEEKLY FEED ITEM
+   MILK → FEED ITEM
 ========================= */
 async function getWeeklyMilkFeed(dairyId) {
 
@@ -115,6 +115,8 @@ async function getWeeklyMilkFeed(dairyId) {
 
   return {
     type: 'milk',
+    _sortDate: latest.weekEnd, // IMPORTANT FOR FEED SORTING
+
     userName: 'System',
     userImage: 'https://ui-avatars.com/api/?name=System&background=0d6efd&color=fff',
     dateText: formatDate(latest.weekEnd),
@@ -137,13 +139,17 @@ async function getWeeklyMilkFeed(dairyId) {
 function formatPosts(posts = []) {
   return posts.map(p => ({
     type: 'post',
+    _sortDate: p.createdAt,
+
     _id: p._id,
     userId: p.user,
     userName: p.userName,
     userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(p.userName)}&background=198754&color=fff`,
     text: p.text || '',
     image: p.image || null,
+
     likes: p.likes?.length || 0,
+
     comments: (p.comments || []).map(c => ({
       _id: c._id,
       userId: c.userId,
@@ -152,6 +158,7 @@ function formatPosts(posts = []) {
       text: c.text,
       dateText: formatDate(c.createdAt)
     })),
+
     createdAt: p.createdAt,
     dateText: formatDate(p.createdAt)
   }));
@@ -166,6 +173,8 @@ function formatMedical(dairy) {
 
   return {
     type: 'medical',
+    _sortDate: dairy.medicalAttention.markedAt,
+
     _id: 'medical_' + dairy._id,
     userName: 'System',
     userImage: 'https://ui-avatars.com/api/?name=Medical&background=c62828&color=fff',
@@ -179,7 +188,7 @@ function formatMedical(dairy) {
 
 
 /* =========================
-   MAIN FEED BUILDER (IMPORTANT)
+   MAIN FEED BUILDER
 ========================= */
 exports.getDairyPage = async (id) => {
 
@@ -190,12 +199,11 @@ exports.getDairyPage = async (id) => {
     .populate('user', 'name')
     .sort({ createdAt: -1 });
 
-  const postsRaw = updates.filter(u => u.type === 'post');
-
-  const posts = formatPosts(postsRaw);
+  const posts = formatPosts(
+    updates.filter(u => u.type === 'post')
+  );
 
   const milkFeed = await getWeeklyMilkFeed(id);
-
   const medicalFeed = formatMedical(dairy);
 
   /* =========================
@@ -206,7 +214,9 @@ exports.getDairyPage = async (id) => {
   if (milkFeed) feed.push(milkFeed);
   if (medicalFeed) feed.push(medicalFeed);
 
-  feed = feed.sort((a, b) => new Date(b.createdAt || b.weekEnd) - new Date(a.createdAt || a.weekEnd));
+  feed = feed.sort(
+    (a, b) => new Date(b._sortDate) - new Date(a._sortDate)
+  );
 
   return {
     dairy: {
@@ -215,7 +225,9 @@ exports.getDairyPage = async (id) => {
         ? `/uploads/${dairy.profileImage}`
         : `https://ui-avatars.com/api/?name=${encodeURIComponent(dairy.name)}`
     },
+
     feed,
+
     commentCount: updates.filter(u => u.type === 'comment').length
   };
 };
