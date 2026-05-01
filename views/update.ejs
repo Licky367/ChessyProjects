@@ -55,7 +55,7 @@
 </span>
 </div>
 
-<div class="meta" style="margin-top:8px;">
+<div class="meta">
 <a href="/milk/history/<%= dairy._id %>" class="btn btn-primary btn-sm">
 🍼 View Milking History
 </a>
@@ -87,7 +87,7 @@
 
 <textarea 
 id="postText"
-placeholder="<%= user.name %>, say something about this project..."
+placeholder="<%= user.name %>, say something..."
 rows="2"
 required
 ></textarea>
@@ -103,11 +103,12 @@ required
 
 
 <!-- ========================= -->
-<!-- FEED -->
+<!-- 🟦 UNIFIED FEED (CORE CHANGE) -->
 <!-- ========================= -->
 
-<div id="postFeed">
+<div id="feed">
 
+<!-- POSTS -->
 <% posts.forEach(post => { %>
 
 <div class="feed-card" data-id="<%= post._id %>">
@@ -115,7 +116,7 @@ required
 <div class="feed-header">
 
 <div class="feed-user">
-<img src="<%= post.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(post.userName) %>" class="avatar-sm">
+<img src="<%= post.userImage %>" class="avatar-sm">
 <div>
 <strong><%= post.userName %></strong>
 <small><%= post.dateText %></small>
@@ -137,31 +138,29 @@ required
 </div>
 
 <div class="feed-actions">
-
 <button class="like-btn" data-id="<%= post._id %>">
-👍 <span class="like-count"><%= post.likes %></span>
+👍 <span><%= post.likes %></span>
 </button>
 
 <button class="toggle-comments">
 💬 <span><%= post.comments.length %></span>
 </button>
-
 </div>
 
 <div class="comment-section">
 
 <% post.comments.forEach(c => { %>
-<div class="comment-item" data-id="<%= c._id %>">
+<div class="comment-item">
 
 <div class="comment-user">
-<img src="<%= c.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.userName) %>" class="avatar-xs">
+<img src="<%= c.userImage %>" class="avatar-xs">
 <div>
 <strong><%= c.userName %></strong><br>
 <%= c.text %>
 </div>
 </div>
 
-<% if (user && (user._id.toString() === c.userId.toString() || user.role === 'admin' || user._id.toString() === post.userId.toString())) { %>
+<% if (user) { %>
 <button class="delete-comment" data-id="<%= c._id %>">❌</button>
 <% } %>
 
@@ -181,16 +180,11 @@ required
 
 <% }) %>
 
-</div>
 
-
-<!-- ========================= -->
-<!-- 🟩 WEEKLY MILKING FEED -->
-<!-- ========================= -->
-
+<!-- 🟩 WEEKLY SYSTEM POST (NOW INSIDE FEED) -->
 <% if (weeklyFeed) { %>
 
-<div class="feed-card">
+<div class="feed-card system">
 
 <div class="feed-header">
 
@@ -206,10 +200,8 @@ required
 
 <div class="feed-body">
 
-<div class="feed-title">
-📊 Weekly milking summary of <%= dairy.name %><br>
-<small><%= weeklyFeed.weekStart %> → <%= weeklyFeed.weekEnd %></small>
-</div>
+<strong>📊 Weekly Milking Summary</strong>
+<p><%= weeklyFeed.weekStart %> → <%= weeklyFeed.weekEnd %></p>
 
 <table class="weekly-table">
 <thead>
@@ -219,19 +211,17 @@ required
 </tr>
 </thead>
 <tbody>
-
 <% weeklyFeed.days.forEach(d => { %>
 <tr>
 <td><%= d.day %></td>
 <td><%= d.total %> L</td>
 </tr>
 <% }) %>
-
 </tbody>
 </table>
 
 <div class="weekly-average">
-Average: <strong><%= weeklyFeed.average %> L/day</strong>
+Average: <%= weeklyFeed.average %> L/day
 </div>
 
 </div>
@@ -241,20 +231,17 @@ Average: <strong><%= weeklyFeed.average %> L/day</strong>
 <% } %>
 
 
-<!-- ========================= -->
-<!-- MEDICAL FEED -->
-<!-- ========================= -->
-
+<!-- 🟥 MEDICAL SYSTEM POST -->
 <% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
 
-<div id="medicalFeed" class="medical-feed-card">
+<div class="feed-card medical">
 
 <div class="feed-header">
 
 <div class="feed-user">
-<img src="https://ui-avatars.com/api/?name=<%= user?.name || 'System' %>&background=c62828&color=fff" class="avatar-sm">
+<img src="https://ui-avatars.com/api/?name=Medical&background=c62828&color=fff" class="avatar-sm">
 <div>
-<strong><%= user?.name || 'System' %></strong>
+<strong>Medical Alert</strong>
 <small><%= new Date(dairy.medicalAttention.markedAt).toLocaleString() %></small>
 </div>
 </div>
@@ -262,21 +249,15 @@ Average: <strong><%= weeklyFeed.average %> L/day</strong>
 </div>
 
 <div class="feed-body">
-<div class="feed-title">🚨 Medical Attention Required</div>
-<div>
-<strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
-<strong>Details:</strong> <%= dairy.medicalAttention.details %>
-</div>
-</div>
-
-<div class="feed-actions">
-👍 <span id="medicalLikeCount"><%= dairy.medicalAttention.likes || 0 %></span>
-💬 <span><%= commentCount %></span>
+<strong>🚨 <%= dairy.medicalAttention.type %></strong>
+<p><%= dairy.medicalAttention.details %></p>
 </div>
 
 </div>
 
 <% } %>
+
+</div>
 
 </div>
 
@@ -293,6 +274,14 @@ padding:12px;
 margin-top:12px;
 border-radius:10px;
 box-shadow:0 3px 8px rgba(0,0,0,.08);
+}
+
+.feed-card.system{
+border-left:5px solid #198754;
+}
+
+.feed-card.medical{
+border-left:5px solid #c62828;
 }
 
 .feed-header{
@@ -353,15 +342,6 @@ border:none;
 background:none;
 cursor:pointer;
 float:right;
-}
-
-.medical-feed-card{
-background:#fff;
-border-left:5px solid #c62828;
-padding:12px;
-margin-top:15px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,.08);
 }
 
 .weekly-table{
