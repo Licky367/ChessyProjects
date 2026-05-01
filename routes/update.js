@@ -36,7 +36,7 @@ router.get('/dairy/:id', controller.viewPage);
 
 
 /* =========================
-   🟥 MEDICAL (EXISTING)
+   🟥 COMMENTS + PROFILE IMAGE (EXISTING)
 ========================= */
 
 router.post('/dairy/:id/comment', isAuth, controller.comment);
@@ -46,6 +46,35 @@ router.put(
   isAuth,
   upload.single('profileImage'),
   controller.image
+);
+
+
+/* =========================================================
+   🟥 MEDICAL SYSTEM (EXTENDED)
+========================================================= */
+
+/**
+ * MARK MEDICAL
+ * - Sets Dairy.medicalAttention.isMarked = true
+ * - Saves type + details
+ * - Creates Update record (type: medical, status: marked)
+ */
+router.post(
+  '/dairy/:id/medical-mark',
+  isAuth,
+  controller.markMedical
+);
+
+/**
+ * UNMARK MEDICAL (ADMIN ONLY)
+ * - Sets Dairy.medicalAttention.isMarked = false
+ * - Requires charges + description
+ * - Creates Update record (type: medical, status: cleared)
+ */
+router.post(
+  '/dairy/:id/medical-unmark',
+  isAuth,
+  controller.unmarkMedical
 );
 
 
