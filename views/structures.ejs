@@ -32,10 +32,9 @@
 
                 <div class="wa-subtext">Facility Code: <%= dairy.code %></div>
 
-                <!-- STATUS -->
                 <div class="wa-subtext">
                   Status:
-                  <% if (dairy.needsMaintenance) { %>
+                  <% if (dairy.needsMaintenance === true) { %>
                     <span style="color:#b00020;font-weight:bold;">Needs Repair/Maintenance</span>
                   <% } else { %>
                     <span style="color:#0b5d1e;font-weight:bold;">OK</span>
@@ -49,17 +48,22 @@
             <!-- ACTIONS -->
             <div style="padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap;">
 
-              <!-- CASE 1: OK → CAN MARK MAINTENANCE -->
-              <% if (user && (user.role === 'admin' || user.role === 'dairyWorker') && !dairy.needsMaintenance) { %>
+              <!-- ========================= -->
+              <!-- CASE 1: OK → MARK (TOGGLE FORM) -->
+              <!-- ========================= -->
+              <% if (dairy.needsMaintenance === false && user && (user.role === 'admin' || user.role === 'dairyWorker')) { %>
 
-                <button onclick="toggleForm('<%= dairy._id %>')" 
-                        style="padding:6px 10px; border:none; background:#0b5d1e; color:#fff; border-radius:6px; cursor:pointer;">
+                <!-- BUTTON ONLY -->
+                <button type="button"
+                        onclick="toggleForm('<%= dairy._id %>')"
+                        style="padding:6px 10px; background:#0b5d1e; color:#fff; border:none; border-radius:6px; cursor:pointer;">
                   Mark Maintenance
                 </button>
 
-                <form id="form-<%= dairy._id %>" 
-                      action="/dairy/<%= dairy._id %>/maintenance/mark" 
-                      method="POST" 
+                <!-- HIDDEN FORM -->
+                <form id="form-<%= dairy._id %>"
+                      action="/dairy/<%= dairy._id %>/maintenance/mark"
+                      method="POST"
                       style="display:none; margin-top:10px; width:100%;">
 
                   <select name="type" required style="padding:6px; width:100%; margin-bottom:6px;">
@@ -69,12 +73,12 @@
                     <option value="construction">Construction</option>
                   </select>
 
-                  <textarea name="description" 
-                            placeholder="Describe issue..." 
-                            required 
+                  <textarea name="description"
+                            placeholder="Describe issue..."
+                            required
                             style="width:100%; padding:6px; margin-bottom:6px;"></textarea>
 
-                  <button type="submit" 
+                  <button type="submit"
                           style="padding:6px 10px; background:#b00020; color:#fff; border:none; border-radius:6px;">
                     Submit
                   </button>
@@ -83,13 +87,14 @@
 
               <% } %>
 
-
-              <!-- CASE 2: NEEDS MAINTENANCE → ONLY ADMIN CAN UNMARK -->
-              <% if (user && user.role === 'admin' && dairy.needsMaintenance) { %>
+              <!-- ========================= -->
+              <!-- CASE 2: NEEDS → ONLY UNMARK -->
+              <!-- ========================= -->
+              <% if (dairy.needsMaintenance === true && user && user.role === 'admin') { %>
 
                 <form action="/dairy/<%= dairy._id %>/maintenance/clear" method="POST">
 
-                  <button type="submit" 
+                  <button type="submit"
                           style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
                     Unmark Maintenance
                   </button>
@@ -119,7 +124,9 @@
 <script>
 function toggleForm(id){
   const form = document.getElementById("form-" + id);
-  if(form.style.display === "none" || form.style.display === ""){
+  if (!form) return;
+
+  if (form.style.display === "none" || form.style.display === "") {
     form.style.display = "block";
   } else {
     form.style.display = "none";
