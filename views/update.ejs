@@ -112,9 +112,20 @@ required
 
 <div class="feed-card" data-id="<%= post._id %>">
 
+<!-- HEADER -->
 <div class="feed-header">
-<strong><%= post.userName %></strong>
+
+<div class="feed-user">
+<img 
+src="<%= post.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(post.userName) %>" 
+class="avatar-sm"
+>
+
+<div>
+<strong><%= post.userName %></strong><br>
 <small><%= post.dateText %></small>
+</div>
+</div>
 
 <% if (user && (user._id.toString() === post.userId.toString() || user.role === 'admin')) { %>
 <button class="delete-post" data-id="<%= post._id %>">🗑</button>
@@ -122,14 +133,53 @@ required
 
 </div>
 
+<!-- BODY -->
 <div class="feed-body">
-<p><%= post.text %></p>
 
+<!-- TEXT -->
+<% if (post.text) { %>
+<p><%= post.text %></p>
+<% } %>
+
+<!-- IMAGE -->
 <% if (post.image) { %>
 <img src="/uploads/<%= post.image %>" class="feed-img">
 <% } %>
+
+<!-- 🟩 WEEKLY MILKING TABLE -->
+<% if (post.type === 'weekly') { %>
+
+<div class="weekly-block">
+
+<table class="weekly-table">
+<thead>
+<tr>
+<th>Day</th>
+<th>Total (L)</th>
+</tr>
+</thead>
+
+<tbody>
+<% post.weekly.days.forEach(d => { %>
+<tr>
+<td><%= d.day %></td>
+<td><%= d.total %> L</td>
+</tr>
+<% }) %>
+</tbody>
+</table>
+
+<div class="weekly-average">
+Average: <strong><%= post.weekly.average %> L/day</strong>
 </div>
 
+</div>
+
+<% } %>
+
+</div>
+
+<!-- ACTIONS -->
 <div class="feed-actions">
 
 <button class="like-btn" data-id="<%= post._id %>">
@@ -142,14 +192,29 @@ required
 
 </div>
 
+<!-- COMMENTS -->
 <div class="comment-section">
 
 <% post.comments.forEach(c => { %>
 <div class="comment-item" data-id="<%= c._id %>">
+
+<div class="comment-user">
+<img 
+src="<%= c.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.userName) %>" 
+class="avatar-xs"
+>
+
+<div>
 <strong><%= c.userName %></strong><br>
 <%= c.text %>
+</div>
+</div>
 
-<% if (user && (user._id.toString() === c.userId.toString() || user.role === 'admin' || user._id.toString() === post.userId.toString())) { %>
+<% if (user && (
+user._id.toString() === c.userId.toString() ||
+user._id.toString() === post.userId.toString() ||
+user.role === 'admin'
+)) { %>
 <button class="delete-comment" data-id="<%= c._id %>">❌</button>
 <% } %>
 
@@ -173,39 +238,6 @@ required
 
 
 <!-- ========================= -->
-<!-- MEDICAL FEED -->
-<!-- ========================= -->
-
-<% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
-
-<div id="medicalFeed" class="medical-feed-card">
-
-<div class="feed-header">
-<strong><%= user?.name || 'System' %></strong>
-<small><%= new Date(dairy.medicalAttention.markedAt).toLocaleString() %></small>
-</div>
-
-<div class="feed-body">
-<div class="feed-title">🚨 Medical Attention Required</div>
-<div>
-<strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
-<strong>Details:</strong> <%= dairy.medicalAttention.details %>
-</div>
-</div>
-
-<div class="feed-actions">
-👍 <span id="medicalLikeCount"><%= dairy.medicalAttention.likes || 0 %></span>
-💬 <span><%= commentCount %></span>
-</div>
-
-</div>
-
-<% } %>
-
-</div>
-
-
-<!-- ========================= -->
 <!-- STYLES -->
 <!-- ========================= -->
 
@@ -217,6 +249,30 @@ padding:12px;
 margin-top:12px;
 border-radius:10px;
 box-shadow:0 3px 8px rgba(0,0,0,.08);
+}
+
+.feed-header{
+display:flex;
+justify-content:space-between;
+align-items:center;
+}
+
+.feed-user{
+display:flex;
+gap:10px;
+align-items:center;
+}
+
+.avatar-sm{
+width:40px;
+height:40px;
+border-radius:50%;
+}
+
+.avatar-xs{
+width:28px;
+height:28px;
+border-radius:50%;
 }
 
 .feed-img{
@@ -231,12 +287,6 @@ gap:10px;
 margin-top:8px;
 }
 
-.feed-actions button{
-border:none;
-background:none;
-cursor:pointer;
-}
-
 .comment-section{
 display:none;
 margin-top:10px;
@@ -246,29 +296,43 @@ margin-top:10px;
 display:block;
 }
 
+.comment-user{
+display:flex;
+gap:8px;
+}
+
 .delete-post,
 .delete-comment{
 color:red;
 border:none;
 background:none;
 cursor:pointer;
-float:right;
 }
 
-.medical-feed-card{
-background:#fff;
-border-left:5px solid #c62828;
-padding:12px;
-margin-top:15px;
-border-radius:10px;
-box-shadow:0 4px 10px rgba(0,0,0,.08);
+.weekly-table{
+width:100%;
+border-collapse:collapse;
+margin-top:10px;
+}
+
+.weekly-table th,
+.weekly-table td{
+border:1px solid #ddd;
+padding:6px;
+font-size:13px;
+}
+
+.weekly-average{
+margin-top:8px;
+font-weight:bold;
+color:#2e7d32;
 }
 
 </style>
 
 
 <!-- ========================= -->
-<!-- SOCKET + REALTIME LOGIC -->
+<!-- SOCKET + JS -->
 <!-- ========================= -->
 
 <script>
@@ -280,172 +344,81 @@ socket.emit("joinDairy", dairyId);
 
 <% if (user) { %>
 socket.emit("setUser", {
-  _id: "<%= user._id %>",
-  name: "<%= user.name %>",
-  role: "<%= user.role %>"
+_id: "<%= user._id %>",
+name: "<%= user.name %>",
+role: "<%= user.role %>"
 });
 <% } %>
 
 
-/* =========================
-   CREATE POST
-========================= */
+/* CREATE POST */
 document.getElementById("postForm")?.addEventListener("submit", async e => {
-  e.preventDefault();
+e.preventDefault();
 
-  const text = document.getElementById("postText").value;
-  const image = document.getElementById("postImage").files[0];
+const formData = new FormData();
+formData.append("text", postText.value);
+if(postImage.files[0]) formData.append("image", postImage.files[0]);
 
-  const formData = new FormData();
-  formData.append("text", text);
-  if (image) formData.append("image", image);
+await fetch(`/dairy/${dairyId}/post`,{
+method:"POST",
+body:formData
+});
 
-  await fetch(`/dairy/${dairyId}/post`, {
-    method: "POST",
-    body: formData
-  });
-
-  document.getElementById("postText").value = "";
-  document.getElementById("postImage").value = "";
+postText.value = "";
+postImage.value = "";
 });
 
 
-/* =========================
-   LIKE POST
-========================= */
-document.addEventListener("click", async (e) => {
-  if (e.target.closest(".like-btn")) {
-    const postId = e.target.closest(".like-btn").dataset.id;
-
-    await fetch(`/post/${postId}/like`, { method: "POST" });
-  }
+/* LIKE */
+document.addEventListener("click", async e=>{
+if(e.target.closest(".like-btn")){
+const id = e.target.closest(".like-btn").dataset.id;
+await fetch(`/post/${id}/like`,{method:"POST"});
+}
 });
 
 
-/* =========================
-   TOGGLE COMMENTS
-========================= */
-document.addEventListener("click", (e) => {
-  if (e.target.closest(".toggle-comments")) {
-    const card = e.target.closest(".feed-card");
-    card.querySelector(".comment-section").classList.toggle("active");
-  }
+/* TOGGLE COMMENTS */
+document.addEventListener("click", e=>{
+if(e.target.closest(".toggle-comments")){
+const card = e.target.closest(".feed-card");
+card.querySelector(".comment-section").classList.toggle("active");
+}
 });
 
 
-/* =========================
-   COMMENT POST
-========================= */
-document.addEventListener("submit", async (e) => {
-  if (e.target.classList.contains("comment-form")) {
-    e.preventDefault();
+/* COMMENT */
+document.addEventListener("submit", async e=>{
+if(e.target.classList.contains("comment-form")){
+e.preventDefault();
 
-    const postId = e.target.dataset.id;
-    const text = e.target.querySelector("textarea").value;
+const id = e.target.dataset.id;
+const text = e.target.querySelector("textarea").value;
 
-    await fetch(`/post/${postId}/comment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text })
-    });
-
-    e.target.querySelector("textarea").value = "";
-  }
+await fetch(`/post/${id}/comment`,{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body: JSON.stringify({ text })
 });
 
-
-/* =========================
-   DELETE POST
-========================= */
-document.addEventListener("click", async (e) => {
-  if (e.target.classList.contains("delete-post")) {
-    const id = e.target.dataset.id;
-    await fetch(`/post/${id}`, { method: "DELETE" });
-  }
-});
-
-
-/* =========================
-   DELETE COMMENT
-========================= */
-document.addEventListener("click", async (e) => {
-  if (e.target.classList.contains("delete-comment")) {
-    const id = e.target.dataset.id;
-    await fetch(`/comment/${id}`, { method: "DELETE" });
-  }
-});
-
-
-/* =========================
-   SOCKET EVENTS
-========================= */
-
-/* NEW POST */
-socket.on("postCreated", (post) => {
-
-  const feed = document.getElementById("postFeed");
-
-  const div = document.createElement("div");
-  div.className = "feed-card";
-  div.dataset.id = post._id;
-
-  div.innerHTML = `
-    <div class="feed-header">
-      <strong>${post.userName}</strong>
-      <small>${post.dateText}</small>
-    </div>
-
-    <div class="feed-body">
-      <p>${post.text || ''}</p>
-      ${post.image ? `<img src="/uploads/${post.image}" class="feed-img">` : ''}
-    </div>
-
-    <div class="feed-actions">
-      <button class="like-btn" data-id="${post._id}">
-        👍 <span class="like-count">0</span>
-      </button>
-
-      <button class="toggle-comments">💬 <span>0</span></button>
-    </div>
-
-    <div class="comment-section"></div>
-  `;
-
-  feed.prepend(div);
-});
-
-
-/* LIKE UPDATE */
-socket.on("postLiked", (data) => {
-  const el = document.querySelector(`[data-id="${data.postId}"] .like-count`);
-  if (el) el.textContent = data.likes;
-});
-
-
-/* NEW COMMENT */
-socket.on("postCommentAdded", (data) => {
-  const card = document.querySelector(`[data-id="${data.postId}"] .comment-section`);
-  if (!card) return;
-
-  const div = document.createElement("div");
-  div.className = "comment-item";
-  div.innerHTML = `<strong>${data.comment.userName}</strong><br>${data.comment.text}`;
-
-  card.appendChild(div);
+e.target.querySelector("textarea").value="";
+}
 });
 
 
 /* DELETE POST */
-socket.on("postDeleted", (data) => {
-  const el = document.querySelector(`[data-id="${data.postId}"]`);
-  if (el) el.remove();
+document.addEventListener("click", async e=>{
+if(e.target.classList.contains("delete-post")){
+await fetch(`/post/${e.target.dataset.id}`,{method:"DELETE"});
+}
 });
 
 
 /* DELETE COMMENT */
-socket.on("commentDeleted", (data) => {
-  const el = document.querySelector(`[data-id="${data.commentId}"]`);
-  if (el) el.remove();
+document.addEventListener("click", async e=>{
+if(e.target.classList.contains("delete-comment")){
+await fetch(`/comment/${e.target.dataset.id}`,{method:"DELETE"});
+}
 });
 
 </script>
