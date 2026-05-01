@@ -54,10 +54,9 @@ exports.viewPage = async (req, res) => {
       title: 'Dairy Profile',
 
       dairy: data.dairy,
-      updates: data.updates,          // medical/comments
-      posts: data.posts || [],        // FEED
-
-      weeklyFeed: data.weeklyFeed || null, // ✅ unified naming
+      updates: data.updates,
+      posts: data.posts || [],
+      weeklyFeed: data.weeklyFeed || null,
 
       commentCount: data.commentCount,
       user: req.session.user || null
@@ -71,7 +70,7 @@ exports.viewPage = async (req, res) => {
 
 
 /* =========================================================
-   🟩 GENERAL COMMENT (DAIRY FEED COMMENTS)
+   🟩 GENERAL COMMENT
 ========================================================= */
 exports.comment = async (req, res) => {
   try {
@@ -229,12 +228,111 @@ exports.unmarkMedicalAttention = async (req, res) => {
 
 
 /* =========================================================
+   🟩 MARK MAINTENANCE (NEW)
+========================================================= */
+exports.markMaintenance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user) return res.status(401).send('Unauthorized');
+
+    if (!(user.role === 'admin' || user.role === 'dairyWorker')) {
+      return res.status(403).send('Not allowed to mark maintenance');
+    }
+
+    const type = req.body.type?.trim();
+    const description = req.body.description?.trim();
+
+    if (!type || !description) {
+      return res.status(400).send('Type and description are required');
+    }
+
+    const update = await updateService.markMaintenance({
+      dairyId: id,
+      userId: user._id,
+      type,
+      description
+    });
+
+    const payload = {
+      dairyId: id,
+      status: 'marked',
+      type,
+      description,
+      userName: user.name,
+      userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+      dateText: new Date(update.createdAt).toLocaleString()
+    };
+
+    const io = req.app.get('io');
+    if (io) io.to(id).emit('maintenanceMarked', payload);
+
+    res.redirect(`/dairy/${id}`);
+
+  } catch (err) {
+    console.error('MARK MAINTENANCE ERROR:', err.message);
+    res.status(500).send('Failed to mark maintenance');
+  }
+};
+
+
+/* =========================================================
+   🟦 CLEAR MAINTENANCE (NEW)
+========================================================= */
+exports.clearMaintenance = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = req.session.user;
+
+    if (!user) return res.status(401).send('Unauthorized');
+    if (user.role !== 'admin') {
+      return res.status(403).send('Only admin can clear maintenance');
+    }
+
+    const charges = Number(req.body.charges);
+    const description = req.body.description?.trim();
+
+    if (isNaN(charges) || charges < 0) {
+      return res.status(400).send('Valid charges required');
+    }
+
+    if (!description) {
+      return res.status(400).send('Description required');
+    }
+
+    const update = await updateService.clearMaintenance({
+      dairyId: id,
+      userId: user._id,
+      charges,
+      description
+    });
+
+    const payload = {
+      dairyId: id,
+      status: 'cleared',
+      charges,
+      description,
+      userName: user.name,
+      dateText: new Date(update.createdAt).toLocaleString()
+    };
+
+    const io = req.app.get('io');
+    if (io) io.to(id).emit('maintenanceCleared', payload);
+
+    res.redirect(`/dairy/${id}`);
+
+  } catch (err) {
+    console.error('CLEAR MAINTENANCE ERROR:', err.message);
+    res.status(500).send('Failed to clear maintenance');
+  }
+};
+
+
+/* =========================================================
    🟦 POSTS SYSTEM
 ========================================================= */
 
-/**
- * CREATE POST
- */
 exports.createPost = async (req, res) => {
   try {
     const { id } = req.params;
@@ -283,9 +381,6 @@ exports.createPost = async (req, res) => {
 };
 
 
-/**
- * LIKE POST
- */
 exports.likePost = async (req, res) => {
   try {
     const user = req.session.user;
@@ -313,9 +408,6 @@ exports.likePost = async (req, res) => {
 };
 
 
-/**
- * ADD POST COMMENT
- */
 exports.addPostComment = async (req, res) => {
   try {
     const user = req.session.user;
@@ -353,9 +445,6 @@ exports.addPostComment = async (req, res) => {
 };
 
 
-/**
- * DELETE POST
- */
 exports.deletePost = async (req, res) => {
   try {
     const user = req.session.user;
@@ -382,9 +471,6 @@ exports.deletePost = async (req, res) => {
 };
 
 
-/**
- * DELETE COMMENT
- */
 exports.deleteComment = async (req, res) => {
   try {
     const user = req.session.user;
