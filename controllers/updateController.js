@@ -42,7 +42,7 @@ exports.viewStructures = async (req, res) => {
 
 
 /* =========================================================
-   🟨 VIEW PROFILE PAGE (MAIN FEED)
+   🟨 VIEW PROFILE PAGE (FEED + POSTS + WEEKLY)
 ========================================================= */
 exports.viewPage = async (req, res) => {
   try {
@@ -55,9 +55,9 @@ exports.viewPage = async (req, res) => {
 
       dairy: data.dairy,
       updates: data.updates,          // medical/comments
-      posts: data.posts || [],        // social posts
+      posts: data.posts || [],        // FEED
 
-      weeklyMilk: data.weeklyFeed || null,  // ✅ FIXED NAME MATCH
+      weeklyFeed: data.weeklyFeed || null, // ✅ unified naming
 
       commentCount: data.commentCount,
       user: req.session.user || null
@@ -71,7 +71,7 @@ exports.viewPage = async (req, res) => {
 
 
 /* =========================================================
-   🟩 ADD MEDICAL COMMENT (GENERAL COMMENTS)
+   🟩 GENERAL COMMENT (DAIRY FEED COMMENTS)
 ========================================================= */
 exports.comment = async (req, res) => {
   try {
@@ -80,13 +80,8 @@ exports.comment = async (req, res) => {
 
     const comment = req.body.comment?.trim();
 
-    if (!user) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    if (!comment) {
-      return res.status(400).json({ error: 'Comment cannot be empty' });
-    }
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    if (!comment) return res.status(400).json({ error: 'Comment cannot be empty' });
 
     const saved = await updateService.addComment({
       dairyId: id,
@@ -99,20 +94,15 @@ exports.comment = async (req, res) => {
       comment: saved.comment,
       userName: user.name,
       userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
-      dateText: new Date(saved.createdAt).toLocaleString(),
-      createdAt: saved.createdAt
+      dateText: new Date(saved.createdAt).toLocaleString()
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('commentAdded', payload);
-    }
+    if (io) io.to(id).emit('commentAdded', payload);
 
-    if (req.xhr || req.headers.accept?.includes('json')) {
-      return res.json(payload);
-    }
-
-    return res.redirect(`/dairy/${id}`);
+    return req.xhr || req.headers.accept?.includes('json')
+      ? res.json(payload)
+      : res.redirect(`/dairy/${id}`);
 
   } catch (err) {
     console.error('COMMENT ERROR:', err.message);
@@ -122,7 +112,7 @@ exports.comment = async (req, res) => {
 
 
 /* =========================================================
-   🟦 UPDATE IMAGE (PROFILE IMAGE FEED EVENT)
+   🟦 UPDATE IMAGE
 ========================================================= */
 exports.image = async (req, res) => {
   try {
@@ -132,7 +122,7 @@ exports.image = async (req, res) => {
     if (!user) return res.status(401).send('Unauthorized');
     if (!req.file) return res.status(400).send('No image uploaded');
 
-    const result = await updateService.updateImage({
+    await updateService.updateImage({
       dairyId: id,
       userId: user._id,
       image: req.file.filename
@@ -146,9 +136,7 @@ exports.image = async (req, res) => {
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('imageUpdated', payload);
-    }
+    if (io) io.to(id).emit('imageUpdated', payload);
 
     res.redirect(`/dairy/${id}`);
 
@@ -168,7 +156,6 @@ exports.markMedicalAttention = async (req, res) => {
     const user = req.session.user;
 
     if (!user) return res.status(401).send('Unauthorized');
-
     if (user.role !== 'dairyWorker') {
       return res.status(403).send('Only dairy workers can mark medical attention');
     }
@@ -196,9 +183,7 @@ exports.markMedicalAttention = async (req, res) => {
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('medicalMarked', payload);
-    }
+    if (io) io.to(id).emit('medicalMarked', payload);
 
     res.redirect(`/dairy/${id}`);
 
@@ -218,14 +203,11 @@ exports.unmarkMedicalAttention = async (req, res) => {
     const user = req.session.user;
 
     if (!user) return res.status(401).send('Unauthorized');
-
     if (user.role !== 'admin') {
       return res.status(403).send('Only admin can unmark medical attention');
     }
 
-    await updateService.unmarkMedicalAttention({
-      dairyId: id
-    });
+    await updateService.unmarkMedicalAttention({ dairyId: id });
 
     const payload = {
       dairyId: id,
@@ -235,9 +217,7 @@ exports.unmarkMedicalAttention = async (req, res) => {
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('medicalUnmarked', payload);
-    }
+    if (io) io.to(id).emit('medicalUnmarked', payload);
 
     res.redirect(`/dairy/${id}`);
 
@@ -279,7 +259,7 @@ exports.createPost = async (req, res) => {
 
     const payload = {
       _id: post._id,
-      dairy: id,
+      dairyId: id,
       userId: user._id,
       userName: user.name,
       userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
@@ -292,9 +272,7 @@ exports.createPost = async (req, res) => {
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('postCreated', payload);
-    }
+    if (io) io.to(id).emit('postCreated', payload);
 
     res.json(payload);
 
@@ -320,16 +298,11 @@ exports.likePost = async (req, res) => {
       userId: user._id
     });
 
-    const payload = {
-      postId: id,
-      likes: result.likes,
-      userId: user._id
-    };
-
     const io = req.app.get('io');
-    if (io) {
-      io.to(result.dairyId || id).emit('postLiked', payload);
-    }
+    io.emit('postLiked', {
+      postId: id,
+      likes: result.likes
+    });
 
     res.json(result);
 
@@ -369,9 +342,7 @@ exports.addPostComment = async (req, res) => {
     };
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('postCommentAdded', payload);
-    }
+    if (io) io.emit('postCommentAdded', payload);
 
     res.json(comment);
 
@@ -397,14 +368,10 @@ exports.deletePost = async (req, res) => {
       user
     });
 
-    if (!deleted) {
-      return res.status(403).send('Not allowed');
-    }
+    if (!deleted) return res.status(403).send('Not allowed');
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('postDeleted', { postId: id });
-    }
+    io.emit('postDeleted', { postId: id });
 
     res.json({ success: true });
 
@@ -430,14 +397,10 @@ exports.deleteComment = async (req, res) => {
       user
     });
 
-    if (!deleted) {
-      return res.status(403).send('Not allowed');
-    }
+    if (!deleted) return res.status(403).send('Not allowed');
 
     const io = req.app.get('io');
-    if (io) {
-      io.to(id).emit('commentDeleted', { commentId: id });
-    }
+    io.emit('commentDeleted', { commentId: id });
 
     res.json({ success: true });
 
