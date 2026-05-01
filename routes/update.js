@@ -50,7 +50,7 @@ router.put(
 
 
 /* =========================================================
-   🟦 POSTS SYSTEM (NEW)
+   🟦 POSTS SYSTEM (EXISTING)
 ========================================================= */
 
 /**
@@ -63,7 +63,6 @@ router.post(
   controller.createPost
 );
 
-
 /**
  * LIKE / UNLIKE POST
  */
@@ -72,7 +71,6 @@ router.post(
   isAuth,
   controller.likePost
 );
-
 
 /**
  * ADD COMMENT TO POST
@@ -83,7 +81,6 @@ router.post(
   controller.addPostComment
 );
 
-
 /**
  * DELETE POST
  */
@@ -93,7 +90,6 @@ router.delete(
   controller.deletePost
 );
 
-
 /**
  * DELETE COMMENT
  */
@@ -101,6 +97,35 @@ router.delete(
   '/comment/:id',
   isAuth,
   controller.deleteComment
+);
+
+
+/* =========================================================
+   🟩 MAINTENANCE SYSTEM (NEW)
+========================================================= */
+
+/**
+ * MARK MAINTENANCE
+ * - Sets Dairy.needsMaintenance = true
+ * - Creates maintenance update (status: marked)
+ */
+router.post(
+  '/dairy/:id/maintenance/mark',
+  isAuth,
+  controller.markMaintenance
+);
+
+
+/**
+ * CLEAR MAINTENANCE
+ * - Sets Dairy.needsMaintenance = false
+ * - Requires charges + description
+ * - Creates maintenance update (status: cleared)
+ */
+router.post(
+  '/dairy/:id/maintenance/clear',
+  isAuth,
+  controller.clearMaintenance
 );
 
 
