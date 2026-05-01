@@ -1,5 +1,3 @@
-<!-- views/structures.ejs -->
-
 <div class="container">
 
   <h2 style="margin-bottom:15px;color:#0b5d1e;">Dairy Structures</h2>
@@ -46,22 +44,22 @@
             </a>
 
             <!-- ACTIONS -->
-            <div style="padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap;">
+            <div style="padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap; width:100%;">
 
               <!-- ========================= -->
-              <!-- CASE 1: OK → MARK (TOGGLE FORM) -->
+              <!-- CASE 1: OK → MARK -->
               <!-- ========================= -->
               <% if (dairy.needsMaintenance === false && user && (user.role === 'admin' || user.role === 'dairyWorker')) { %>
 
-                <!-- BUTTON ONLY -->
+                <!-- BUTTON -->
                 <button type="button"
-                        onclick="toggleForm('<%= dairy._id %>')"
+                        onclick="toggleMarkForm('<%= dairy._id %>')"
                         style="padding:6px 10px; background:#0b5d1e; color:#fff; border:none; border-radius:6px; cursor:pointer;">
                   Mark Maintenance
                 </button>
 
-                <!-- HIDDEN FORM -->
-                <form id="form-<%= dairy._id %>"
+                <!-- FORM -->
+                <form id="mark-form-<%= dairy._id %>"
                       action="/dairy/<%= dairy._id %>/maintenance/mark"
                       method="POST"
                       style="display:none; margin-top:10px; width:100%;">
@@ -87,16 +85,40 @@
 
               <% } %>
 
+
               <!-- ========================= -->
-              <!-- CASE 2: NEEDS → ONLY UNMARK -->
+              <!-- CASE 2: NEEDS → UNMARK WITH DATA -->
               <!-- ========================= -->
               <% if (dairy.needsMaintenance === true && user && user.role === 'admin') { %>
 
-                <form action="/dairy/<%= dairy._id %>/maintenance/clear" method="POST">
+                <!-- BUTTON -->
+                <button type="button"
+                        onclick="toggleUnmarkForm('<%= dairy._id %>')"
+                        style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+                  Unmark Maintenance
+                </button>
+
+                <!-- FORM -->
+                <form id="unmark-form-<%= dairy._id %>"
+                      action="/dairy/<%= dairy._id %>/maintenance/clear"
+                      method="POST"
+                      style="display:none; margin-top:10px; width:100%;">
+
+                  <input type="number"
+                         name="charges"
+                         placeholder="Charges incurred (KES)"
+                         required
+                         min="0"
+                         style="width:100%; padding:6px; margin-bottom:6px;" />
+
+                  <textarea name="description"
+                            placeholder="Describe work done..."
+                            required
+                            style="width:100%; padding:6px; margin-bottom:6px;"></textarea>
 
                   <button type="submit"
-                          style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-                    Unmark Maintenance
+                          style="padding:6px 10px; background:#0b5d1e; color:#fff; border:none; border-radius:6px;">
+                    Confirm Unmark
                   </button>
 
                 </form>
@@ -121,19 +143,30 @@
 
 </div>
 
+
+<!-- ========================= -->
+<!-- SCRIPTS -->
+<!-- ========================= -->
 <script>
-function toggleForm(id){
-  const form = document.getElementById("form-" + id);
+function toggleMarkForm(id){
+  const form = document.getElementById("mark-form-" + id);
   if (!form) return;
 
-  if (form.style.display === "none" || form.style.display === "") {
-    form.style.display = "block";
-  } else {
-    form.style.display = "none";
-  }
+  form.style.display = (form.style.display === "block") ? "none" : "block";
+}
+
+function toggleUnmarkForm(id){
+  const form = document.getElementById("unmark-form-" + id);
+  if (!form) return;
+
+  form.style.display = (form.style.display === "block") ? "none" : "block";
 }
 </script>
 
+
+<!-- ========================= -->
+<!-- STYLES -->
+<!-- ========================= -->
 <style>
 .container{
   max-width:1000px;
