@@ -13,6 +13,7 @@
         <% if (dairy.code < 0) { %>
 
           <li class="wa-item">
+
             <a href="/dairy/<%= dairy._id %>" class="wa-link">
 
               <div class="wa-avatar-box">
@@ -26,11 +27,67 @@
               </div>
 
               <div class="wa-details">
+
                 <div class="wa-name"><%= dairy.name %></div>
+
                 <div class="wa-subtext">Facility Code: <%= dairy.code %></div>
+
+                <!-- MAINTENANCE STATUS -->
+                <div class="wa-subtext">
+                  Status:
+                  <% if (dairy.needsMaintenance) { %>
+                    <span style="color:#b00020;font-weight:bold;">Needs Repair/Maintenance</span>
+                  <% } else { %>
+                    <span style="color:#0b5d1e;font-weight:bold;">OK</span>
+                  <% } %>
+                </div>
+
               </div>
 
             </a>
+
+            <!-- ACTIONS (outside link to avoid nested click issues) -->
+            <div style="padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap;">
+
+              <!-- MARK MAINTENANCE (admin + dairyWorker) -->
+              <% if (user && (user.role === 'admin' || user.role === 'dairyWorker')) { %>
+
+                <button onclick="toggleForm('<%= dairy._id %>')" style="padding:6px 10px; border:none; background:#0b5d1e; color:#fff; border-radius:6px; cursor:pointer;">
+                  Mark Maintenance
+                </button>
+
+                <form id="form-<%= dairy._id %>" action="/dairy/<%= dairy._id %>/maintenance/mark" method="POST" style="display:none; margin-top:10px; width:100%;">
+
+                  <select name="type" required style="padding:6px; width:100%; margin-bottom:6px;">
+                    <option value="">Select Type</option>
+                    <option value="repair">Repair</option>
+                    <option value="maintenance">Maintenance</option>
+                    <option value="construction">Construction</option>
+                  </select>
+
+                  <textarea name="description" placeholder="Describe issue..." required style="width:100%; padding:6px; margin-bottom:6px;"></textarea>
+
+                  <button type="submit" style="padding:6px 10px; background:#b00020; color:#fff; border:none; border-radius:6px;">
+                    Submit
+                  </button>
+
+                </form>
+
+              <% } %>
+
+              <!-- UNMARK (admin only) -->
+              <% if (user && user.role === 'admin' && dairy.needsMaintenance) { %>
+
+                <form action="/dairy/<%= dairy._id %>/maintenance/clear" method="POST">
+                  <button type="submit" style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+                    Unmark
+                  </button>
+                </form>
+
+              <% } %>
+
+            </div>
+
           </li>
 
         <% } %>
@@ -47,6 +104,16 @@
 
 </div>
 
+<script>
+function toggleForm(id){
+  const form = document.getElementById("form-" + id);
+  if(form.style.display === "none" || form.style.display === ""){
+    form.style.display = "block";
+  } else {
+    form.style.display = "none";
+  }
+}
+</script>
 
 <style>
 /* ========================= */
