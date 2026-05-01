@@ -25,14 +25,12 @@ padding:0 15px;
 z-index:1000;
 }
 
-/* LEFT HEADER */
 .header-left{
 display:flex;
 align-items:center;
 gap:12px;
 }
 
-/* MENU BUTTON */
 .menu-btn{
 font-size:26px;
 cursor:pointer;
@@ -46,7 +44,6 @@ justify-content:center;
 border-radius:8px;
 }
 
-/* TITLE */
 .header-title{
 font-size:20px;
 font-weight:bold;
@@ -78,7 +75,7 @@ text-overflow:ellipsis;
 white-space:nowrap;
 }
 
-.dropdown{
+.dropdown-profile{
 position:absolute;
 right:0;
 top:55px;
@@ -89,7 +86,7 @@ box-shadow:0 10px 25px rgba(0,0,0,.1);
 display:none;
 }
 
-.dropdown a{
+.dropdown-profile a{
 display:block;
 padding:12px;
 text-decoration:none;
@@ -97,7 +94,7 @@ color:#333;
 border-bottom:1px solid #eee;
 }
 
-.profile-box.active .dropdown{display:block;}
+.profile-box.active .dropdown-profile{display:block;}
 
 /* SIDEBAR */
 .sidebar{
@@ -107,35 +104,58 @@ left:-260px;
 width:240px;
 height:calc(100% - 70px - 50px);
 background:#0b5d1e;
-padding:20px;
+padding:15px;
 transition:.3s ease;
 overflow-y:auto;
 }
 
 .sidebar.active{left:0;}
 
-.sidebar h2{
-color:#fff;
-margin-top:15px;
-font-size:16px;
-cursor:pointer;
-}
-
-.sidebar .submenu{
-display:none;
-margin-top:8px;
-}
-
-.sidebar .submenu a{
+.sidebar a{
 display:block;
 color:#fff;
 text-decoration:none;
 padding:10px;
+border-radius:6px;
+margin-bottom:5px;
 font-size:14px;
 }
 
-.sidebar .submenu a:hover{
+.sidebar a:hover{
 background:rgba(255,255,255,.15);
+}
+
+/* DROPDOWN */
+.dropdown-section{
+margin-top:10px;
+}
+
+.dropdown-header{
+color:#fff;
+padding:10px;
+cursor:pointer;
+display:flex;
+justify-content:space-between;
+align-items:center;
+border-radius:6px;
+}
+
+.dropdown-header:hover{
+background:rgba(255,255,255,.15);
+}
+
+.dropdown-content{
+display:none;
+padding-left:10px;
+}
+
+.dropdown-section.active .dropdown-content{
+display:block;
+}
+
+.dropdown-content a{
+font-size:13px;
+padding-left:15px;
 }
 
 /* OVERLAY */
@@ -189,7 +209,6 @@ if(user){
 
 <% if (!isAuthPage) { %>
 
-<!-- HEADER -->
 <div class="header">
 
   <div class="header-left">
@@ -197,7 +216,6 @@ if(user){
     <div class="header-title"><%= headerTitle %></div>
   </div>
 
-  <!-- PROFILE -->
   <div class="profile-box" id="profileBox">
     <div class="profile-trigger" onclick="toggleProfile(event)">
       <% if (user && user.profileImage) { %>
@@ -208,13 +226,10 @@ if(user){
       <div class="profile-name"><%= user ? user.name : "Profile" %></div>
     </div>
 
-    <div class="dropdown">
+    <div class="dropdown-profile">
       <% if(user){ %>
         <a href="/profile">👤 My Account</a>
         <a href="/logout">🚪 Logout</a>
-      <% } else { %>
-        <a href="/login">Login</a>
-        <a href="/signup">Sign Up</a>
       <% } %>
     </div>
   </div>
@@ -226,28 +241,43 @@ if(user){
 
   <% if(user && user.role === "admin"){ %>
 
-    <h2 onclick="toggleMenu('dairyMenu')">DAIRY PROJECTS</h2>
-    <div class="submenu" id="dairyMenu">
-      <a href="/dairy">Home</a>
-      <a href="/dairyProjects">View Dairy Projects</a>
-      <a href="/addDairyProject">Add Project</a>
+    <a href="/">🏠 Home</a>
+    <a href="/create-staff">👥 Add Staff</a>
+
+    <!-- DAIRY DROPDOWN -->
+    <div class="dropdown-section">
+      <div class="dropdown-header" onclick="toggleDropdown(this)">
+        🐄 Dairy Projects ⌄
+      </div>
+      <div class="dropdown-content">
+        <a href="/dairy/new">➕ Add Project</a>
+        <a href="/dairy/projects">📁 View Dairy Projects</a>
+        <a href="/structures">🏗️ View Dairy Facilities</a>
+        <a href="/milk">🥛 Production</a>
+        <a href="/sales">💰 Sales</a>
+        <a href="/milk/stats">📊 Statistics</a>
+        <a href="/financials">📈 Financials</a>
+      </div>
     </div>
 
-    <h2 onclick="toggleMenu('poultryMenu')">POULTRY PROJECTS</h2>
-    <div class="submenu" id="poultryMenu">
-      <a href="/poultry">Home</a>
-      <a href="/addPoultryProject">Add Project</a>
+    <!-- POULTRY DROPDOWN -->
+    <div class="dropdown-section">
+      <div class="dropdown-header" onclick="toggleDropdown(this)">
+        🐔 Poultry Projects ⌄
+      </div>
+      <div class="dropdown-content">
+        <a href="/poultry/add">➕ Add Project</a>
+        <a href="/poultry/projects">📁 View Poultry Projects</a>
+      </div>
     </div>
 
   <% } else if(user && user.role === "dairyWorker"){ %>
 
-    <a href="/dairy">Home</a>
-    <a href="/dairyProjects">View Projects</a>
-
-  <% } else if(user && user.role === "poultryWorker"){ %>
-
-    <a href="/poultry">Home</a>
-    <a href="/poultryProjects">View Projects</a>
+    <a href="/">🏠 Home</a>
+    <a href="/dairy/projects">🐄 View Dairy Cattle</a>
+    <a href="/structures">🏗️ View Dairy Facilities</a>
+    <a href="/milk">🥛 Record Production</a>
+    <a href="/sales">💰 Sales</a>
 
   <% } %>
 
@@ -257,14 +287,12 @@ if(user){
 
 <% } %>
 
-<!-- MAIN -->
-<div class="main <%= isAuthPage ? 'auth' : '' %>">
+<div class="main">
   <%- body %>
 </div>
 
 <% if (!isAuthPage) { %>
 
-<!-- FOOTER -->
 <div class="footer">
   © <%= new Date().getFullYear() %> Dr. Chessy Edwin
 </div>
@@ -272,7 +300,6 @@ if(user){
 <script>
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
-const profileBox = document.getElementById("profileBox");
 
 function openSidebar(){
   sidebar.classList.add("active");
@@ -284,19 +311,15 @@ function closeSidebar(){
   overlay.classList.remove("active");
 }
 
-function toggleProfile(e){
-  e.stopPropagation();
-  profileBox.classList.toggle("active");
-}
+function toggleDropdown(el){
+  const parent = el.parentElement;
 
-function toggleMenu(id){
-  const el = document.getElementById(id);
-  el.style.display = el.style.display === "block" ? "none" : "block";
-}
+  document.querySelectorAll(".dropdown-section").forEach(sec=>{
+    if(sec !== parent) sec.classList.remove("active");
+  });
 
-document.addEventListener("click",()=>{
-  profileBox.classList.remove("active");
-});
+  parent.classList.toggle("active");
+}
 </script>
 
 <% } %>
