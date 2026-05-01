@@ -93,7 +93,7 @@ app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 app.use("/", milkRoutes);
-app.use("/", newRoutes);
+app.use("/dairy", newRoutes);
 
 // ======================
 // HOME ROUTE
