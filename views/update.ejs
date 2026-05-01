@@ -85,12 +85,10 @@
 
 <form id="postForm" enctype="multipart/form-data">
 
-<textarea 
-id="postText"
+<textarea id="postText"
 placeholder="<%= user.name %>, say something..."
 rows="2"
-required
-></textarea>
+required></textarea>
 
 <input type="file" id="postImage" accept="image/*">
 
@@ -103,7 +101,7 @@ required
 
 
 <!-- ========================= -->
-<!-- 🟦 UNIFIED FEED -->
+<!-- FEED -->
 <!-- ========================= -->
 
 <div id="feed">
@@ -256,7 +254,7 @@ Average: <%= item.average %> L/day
 </div>
 
 <div class="feed-body">
-<p><%= item.details %></p>
+<p><%= item.details || item.description %></p>
 </div>
 
 </div>
@@ -264,7 +262,7 @@ Average: <%= item.average %> L/day
 <% } %>
 
 
-<!-- ================= MAINTENANCE (NEW) ================= -->
+<!-- ================= MAINTENANCE ================= -->
 <% if (item.type === 'maintenance') { %>
 
 <div class="feed-card maintenance">
