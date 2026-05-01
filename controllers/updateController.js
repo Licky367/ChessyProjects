@@ -60,7 +60,8 @@ exports.viewPage = async (req, res) => {
       title: 'Dairy Profile',
       dairy: data.dairy,
       updates: data.updates,
-      posts: data.posts || [], // ✅ NEW
+      posts: data.posts || [],
+      weeklyMilk: data.weeklyMilk || [], // ✅ NEW (weekly system feed)
       commentCount: data.commentCount,
       user: req.session.user || null
     });
