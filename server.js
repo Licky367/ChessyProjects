@@ -14,6 +14,7 @@ const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
 const milkRoutes = require("./routes/milk");
 const newRoutes = require("./routes/new");
+const financialsRoutes = require("./routes/financials");
 const indexRoutes = require("./routes/index");
 
 // ======================
@@ -107,6 +108,7 @@ app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 app.use("/", milkRoutes);
+app.use("/", financialsRoutes);
 app.use("/dairy", newRoutes);
 
 
