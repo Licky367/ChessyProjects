@@ -124,7 +124,7 @@ async function getWeeklyMilkFeed(dairyId) {
 
 
 /* =========================
-   POSTS
+   POSTS FORMAT
 ========================= */
 function formatPosts(posts = []) {
   return posts.map(p => ({
@@ -177,9 +177,9 @@ function formatMedical(dairy) {
 }
 
 
-/* =========================================================
-   🟩 MAINTENANCE FEED (NEW)
-========================================================= */
+/* =========================
+   MAINTENANCE FEED
+========================= */
 function formatMaintenance(update) {
   if (update.type !== 'maintenance') return null;
 
@@ -212,9 +212,9 @@ function formatMaintenance(update) {
 }
 
 
-/* =========================
-   MAIN FEED BUILDER
-========================= */
+/* =========================================================
+   MAIN FEED
+========================================================= */
 exports.getDairyPage = async (id) => {
 
   const dairy = await Dairy.findById(id);
@@ -244,8 +244,8 @@ exports.getDairyPage = async (id) => {
   if (milkFeed) feed.push(milkFeed);
   if (medicalFeed) feed.push(medicalFeed);
 
-  feed = feed.sort(
-    (a, b) => new Date(b._sortDate) - new Date(a._sortDate)
+  feed = feed.sort((a, b) =>
+    new Date(b._sortDate) - new Date(a._sortDate)
   );
 
   return {
@@ -264,16 +264,12 @@ exports.getDairyPage = async (id) => {
 
 
 /* =========================================================
-   🟩 MAINTENANCE SERVICE: MARK
+   🟩 MAINTENANCE MARK
 ========================================================= */
 exports.markMaintenance = async ({ dairyId, userId, type, description }) => {
 
   const dairy = await Dairy.findById(dairyId);
   if (!dairy) throw new Error('Dairy not found');
-
-  if (dairy.needsMaintenance === true) {
-    throw new Error('Already marked');
-  }
 
   dairy.needsMaintenance = true;
   await dairy.save();
@@ -296,16 +292,12 @@ exports.markMaintenance = async ({ dairyId, userId, type, description }) => {
 
 
 /* =========================================================
-   🟦 MAINTENANCE SERVICE: CLEAR
+   🟦 MAINTENANCE CLEAR
 ========================================================= */
 exports.clearMaintenance = async ({ dairyId, userId, charges, description }) => {
 
   const dairy = await Dairy.findById(dairyId);
   if (!dairy) throw new Error('Dairy not found');
-
-  if (dairy.needsMaintenance === false) {
-    throw new Error('Not currently under maintenance');
-  }
 
   dairy.needsMaintenance = false;
   await dairy.save();
@@ -315,6 +307,69 @@ exports.clearMaintenance = async ({ dairyId, userId, charges, description }) => 
     user: userId,
     type: 'maintenance',
     maintenance: {
+      status: 'cleared',
+      charges,
+      clearDescription: description,
+      clearedAt: new Date(),
+      clearedBy: userId
+    }
+  });
+
+  return update;
+};
+
+
+/* =========================================================
+   🟥 MEDICAL MARK
+========================================================= */
+exports.markMedicalAttention = async ({ dairyId, userId, type, details }) => {
+
+  const dairy = await Dairy.findById(dairyId);
+  if (!dairy) throw new Error('Dairy not found');
+
+  dairy.medicalAttention = {
+    isMarked: true,
+    type,
+    details,
+    markedAt: new Date(),
+    markedBy: userId
+  };
+
+  await dairy.save();
+
+  const update = await Update.create({
+    dairy: dairyId,
+    user: userId,
+    type: 'medical',
+    medical: {
+      status: 'marked',
+      type,
+      details,
+      markedAt: new Date(),
+      markedBy: userId
+    }
+  });
+
+  return update;
+};
+
+
+/* =========================================================
+   🟪 MEDICAL UNMARK
+========================================================= */
+exports.unmarkMedicalAttention = async ({ dairyId, userId, charges, description }) => {
+
+  const dairy = await Dairy.findById(dairyId);
+  if (!dairy) throw new Error('Dairy not found');
+
+  dairy.medicalAttention.isMarked = false;
+  await dairy.save();
+
+  const update = await Update.create({
+    dairy: dairyId,
+    user: userId,
+    type: 'medical',
+    medical: {
       status: 'cleared',
       charges,
       clearDescription: description,
