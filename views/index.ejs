@@ -1,34 +1,95 @@
-<div class="container mt-5">
+<style>
+.card-modern {
+  border: none;
+  border-radius: 18px;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.35s ease;
+}
 
+.card-modern::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(255,255,255,0.08);
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.card-modern:hover::before {
+  opacity: 1;
+}
+
+.card-modern:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+}
+
+.card-icon {
+  font-size: 32px;
+  margin-bottom: 15px;
+  opacity: 0.9;
+}
+
+.card-title {
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.card-text {
+  opacity: 0.9;
+  line-height: 1.6;
+}
+
+/* Gradient themes */
+.bg-welcome {
+  background: linear-gradient(135deg, #4facfe, #00f2fe);
+}
+
+.bg-purpose {
+  background: linear-gradient(135deg, #43e97b, #38f9d7);
+}
+
+.bg-direction {
+  background: linear-gradient(135deg, #fa709a, #fee140);
+}
+</style>
+
+
+<div class="container mt-5">
   <div class="row g-4">
 
-    <!-- Card 1: Welcome -->
+    <!-- Card 1 -->
     <div class="col-md-4">
-      <div class="card shadow-sm h-100 p-4">
-        <h4 class="mb-3">Welcome</h4>
-        <p class="mb-0">
+      <div class="card card-modern bg-welcome h-100 p-4">
+        <div class="card-icon">👋</div>
+        <h4 class="card-title mb-3">Welcome</h4>
+        <p class="card-text">
           Welcome, <strong><%= user.name %></strong>.<br><br>
           You are now inside Chessy Family Projects.
         </p>
       </div>
     </div>
 
-    <!-- Card 2: Purpose -->
+    <!-- Card 2 -->
     <div class="col-md-4">
-      <div class="card shadow-sm h-100 p-4">
-        <h4 class="mb-3">Purpose</h4>
-        <p class="mb-0">
+      <div class="card card-modern bg-purpose h-100 p-4">
+        <div class="card-icon">🎯</div>
+        <h4 class="card-title mb-3">Purpose</h4>
+        <p class="card-text">
           This system is structured to support organized work, accurate tracking,
           and consistent performance across all activities.
         </p>
       </div>
     </div>
 
-    <!-- Card 3: Direction -->
+    <!-- Card 3 -->
     <div class="col-md-4">
-      <div class="card shadow-sm h-100 p-4">
-        <h4 class="mb-3">Direction</h4>
-        <p class="mb-0">
+      <div class="card card-modern bg-direction h-100 p-4">
+        <div class="card-icon">🚀</div>
+        <h4 class="card-title mb-3">Direction</h4>
+        <p class="card-text">
           Review your environment, understand your workflow,
           and proceed with your tasks.
         </p>
@@ -36,5 +97,4 @@
     </div>
 
   </div>
-
 </div>
