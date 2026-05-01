@@ -11,6 +11,7 @@ const createRoutes = require("./routes/create");
 const authRoutes = require("./routes/auth");
 const updateRoutes = require("./routes/update");
 const milkRoutes = require("./routes/milk");
+const createRoutes = require("./routes/new");
 
 // SOCKET HANDLER
 const socketHandler = require("./socket/socket");
