@@ -7,6 +7,14 @@ module.exports = function (io) {
     console.log('🔌 User connected:', socket.id);
 
     /* =========================
+       SET USER (AUTH CONTEXT)
+    ========================= */
+    socket.on('setUser', (user) => {
+      socket.user = user;
+    });
+
+
+    /* =========================
        JOIN DAIRY ROOM
     ========================= */
     socket.on('joinDairy', (dairyId) => {
@@ -15,24 +23,15 @@ module.exports = function (io) {
     });
 
 
-    /* =========================
-       ATTACH USER
-    ========================= */
-    socket.on('setUser', (user) => {
-      socket.user = user;
-    });
-
-
     /* =========================================================
-       🟦 NEW POST (REALTIME)
+       🟦 CREATE POST (REALTIME)
+       → single source of truth: service
     ========================================================= */
-    socket.on('createPost', async (data) => {
+    socket.on('createPost', async ({ dairyId, text, image }) => {
       try {
 
         const user = socket.user;
-        if (!user) return;
-
-        const { dairyId, text, image } = data;
+        if (!user || !dairyId) return;
 
         const post = await updateService.createPost({
           dairyId,
@@ -42,19 +41,29 @@ module.exports = function (io) {
           image
         });
 
-        io.to(dairyId).emit('postCreated', {
-          ...post,
+        const payload = {
+          _id: post._id,
+          userId: post.user,
+          userName: user.name,
+          userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+          text: post.text,
+          image: post.image,
+          likes: 0,
+          comments: [],
+          createdAt: post.createdAt,
           dateText: new Date(post.createdAt).toLocaleString()
-        });
+        };
+
+        io.to(dairyId).emit('postCreated', payload);
 
       } catch (err) {
-        console.error('Post create error:', err.message);
+        console.error('createPost error:', err.message);
       }
     });
 
 
     /* =========================================================
-       👍 LIKE POST
+       👍 TOGGLE LIKE
     ========================================================= */
     socket.on('likePost', async ({ postId, dairyId }) => {
       try {
@@ -73,21 +82,19 @@ module.exports = function (io) {
         });
 
       } catch (err) {
-        console.error('Like error:', err.message);
+        console.error('likePost error:', err.message);
       }
     });
 
 
     /* =========================================================
-       💬 POST COMMENT
+       💬 ADD COMMENT
     ========================================================= */
-    socket.on('postComment', async (data) => {
+    socket.on('postComment', async ({ postId, dairyId, text }) => {
       try {
 
         const user = socket.user;
-        if (!user) return;
-
-        const { postId, dairyId, text } = data;
+        if (!user || !text) return;
 
         const comment = await updateService.addPostComment({
           postId,
@@ -96,13 +103,19 @@ module.exports = function (io) {
           text
         });
 
-        io.to(dairyId).emit('postCommentAdded', {
+        const payload = {
           postId,
-          comment
-        });
+          comment: {
+            ...comment,
+            userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+            dateText: new Date(comment.createdAt).toLocaleString()
+          }
+        };
+
+        io.to(dairyId).emit('postCommentAdded', payload);
 
       } catch (err) {
-        console.error('Post comment error:', err.message);
+        console.error('postComment error:', err.message);
       }
     });
 
@@ -116,17 +129,17 @@ module.exports = function (io) {
         const user = socket.user;
         if (!user) return;
 
-        const allowed = await updateService.deletePost({
+        const ok = await updateService.deletePost({
           postId,
           user
         });
 
-        if (!allowed) return;
+        if (!ok) return;
 
         io.to(dairyId).emit('postDeleted', { postId });
 
       } catch (err) {
-        console.error('Delete post error:', err.message);
+        console.error('deletePost error:', err.message);
       }
     });
 
@@ -140,13 +153,12 @@ module.exports = function (io) {
         const user = socket.user;
         if (!user) return;
 
-        const allowed = await updateService.deleteComment({
+        const ok = await updateService.deleteComment({
           commentId,
-          postId,
           user
         });
 
-        if (!allowed) return;
+        if (!ok) return;
 
         io.to(dairyId).emit('commentDeleted', {
           commentId,
@@ -154,21 +166,53 @@ module.exports = function (io) {
         });
 
       } catch (err) {
-        console.error('Delete comment error:', err.message);
+        console.error('deleteComment error:', err.message);
       }
     });
 
 
     /* =========================================================
-       🟥 EXISTING: MEDICAL COMMENT
+       🟨 IMAGE UPDATE (REALTIME SYNC)
     ========================================================= */
-    socket.on('newComment', async (data) => {
+    socket.on('imageUpdated', ({ dairyId, image }) => {
+      if (!dairyId || !image) return;
+
+      io.to(dairyId).emit('imageChanged', { image });
+    });
+
+
+    /* =========================================================
+       🚑 MEDICAL EVENTS (CLEANED)
+    ========================================================= */
+
+    socket.on('medicalMarked', ({ dairyId, type, details, userName }) => {
+      if (!dairyId) return;
+
+      io.to(dairyId).emit('medicalMarked', {
+        type,
+        details,
+        userName: userName || socket.user?.name || 'System',
+        dateText: new Date().toLocaleString()
+      });
+    });
+
+    socket.on('medicalUnmarked', ({ dairyId }) => {
+      if (!dairyId) return;
+
+      io.to(dairyId).emit('medicalUnmarked', {
+        cleared: true
+      });
+    });
+
+
+    /* =========================================================
+       🟥 LEGACY SUPPORT (OLD COMMENT SYSTEM)
+    ========================================================= */
+    socket.on('newComment', async ({ dairyId, comment }) => {
       try {
 
-        const { dairyId, comment, userName, userId } = data;
-        const user = socket.user || { _id: userId, name: userName };
-
-        if (!user || !comment || !dairyId) return;
+        const user = socket.user;
+        if (!user || !comment) return;
 
         const saved = await updateService.addComment({
           dairyId,
@@ -180,46 +224,13 @@ module.exports = function (io) {
           _id: saved._id,
           comment: saved.comment,
           userName: user.name,
+          userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
           dateText: new Date(saved.createdAt).toLocaleString()
         });
 
       } catch (err) {
-        console.error('Socket comment error:', err.message);
+        console.error('legacy comment error:', err.message);
       }
-    });
-
-
-    /* =========================================================
-       IMAGE UPDATE
-    ========================================================= */
-    socket.on('imageUpdated', ({ dairyId, image }) => {
-      if (!dairyId || !image) return;
-      io.to(dairyId).emit('imageChanged', { image });
-    });
-
-
-    /* =========================================================
-       🚑 MEDICAL MARKED
-    ========================================================= */
-    socket.on('medicalMarked', ({ dairyId, type, details, userName }) => {
-      if (!dairyId) return;
-
-      io.to(dairyId).emit('medicalMarked', {
-        type,
-        details,
-        userName: userName || 'System',
-        dateText: new Date().toLocaleString()
-      });
-    });
-
-
-    /* =========================================================
-       🚑 MEDICAL UNMARKED
-    ========================================================= */
-    socket.on('medicalUnmarked', ({ dairyId }) => {
-      if (!dairyId) return;
-
-      io.to(dairyId).emit('medicalUnmarked', { cleared: true });
     });
 
 
@@ -227,7 +238,7 @@ module.exports = function (io) {
        DISCONNECT
     ========================= */
     socket.on('disconnect', () => {
-      console.log('❌ User disconnected:', socket.id);
+      console.log('❌ Disconnected:', socket.id);
     });
 
   });
