@@ -41,7 +41,7 @@ function formatDate(date) {
 
 
 /* =========================
-   WEEK RANGE (MON → SUN)
+   WEEK RANGE
 ========================= */
 function getWeekRange(date) {
   const d = new Date(date);
@@ -62,10 +62,9 @@ function getWeekRange(date) {
 
 
 /* =========================
-   MILK → FEED ITEM
+   MILK FEED
 ========================= */
 async function getWeeklyMilkFeed(dairyId) {
-
   const dairy = await Dairy.findById(dairyId);
   if (!dairy || !dairy.isMilking) return null;
 
@@ -79,21 +78,14 @@ async function getWeeklyMilkFeed(dairyId) {
     const key = start.toISOString();
 
     if (!weeks[key]) {
-      weeks[key] = {
-        weekStart: start,
-        weekEnd: end,
-        days: {},
-        total: 0
-      };
+      weeks[key] = { weekStart: start, weekEnd: end, days: {}, total: 0 };
     }
 
-    const dayKey = r.day;
-
-    if (!weeks[key].days[dayKey]) {
-      weeks[key].days[dayKey] = 0;
+    if (!weeks[key].days[r.day]) {
+      weeks[key].days[r.day] = 0;
     }
 
-    weeks[key].days[dayKey] += r.liters;
+    weeks[key].days[r.day] += r.liters;
     weeks[key].total += r.liters;
   });
 
@@ -102,12 +94,10 @@ async function getWeeklyMilkFeed(dairyId) {
 
   if (!latest) return null;
 
-  const daysArr = Object.keys(latest.days)
-    .sort()
-    .map(d => ({
-      day: d,
-      total: latest.days[d]
-    }));
+  const daysArr = Object.keys(latest.days).sort().map(d => ({
+    day: d,
+    total: latest.days[d]
+  }));
 
   const avg = daysArr.length
     ? (latest.total / daysArr.length).toFixed(2)
@@ -115,7 +105,7 @@ async function getWeeklyMilkFeed(dairyId) {
 
   return {
     type: 'milk',
-    _sortDate: latest.weekEnd, // IMPORTANT FOR FEED SORTING
+    _sortDate: latest.weekEnd,
 
     userName: 'System',
     userImage: 'https://ui-avatars.com/api/?name=System&background=0d6efd&color=fff',
@@ -134,7 +124,7 @@ async function getWeeklyMilkFeed(dairyId) {
 
 
 /* =========================
-   FORMAT POSTS → FEED ITEM
+   POSTS
 ========================= */
 function formatPosts(posts = []) {
   return posts.map(p => ({
@@ -166,7 +156,7 @@ function formatPosts(posts = []) {
 
 
 /* =========================
-   MEDICAL → FEED ITEM
+   MEDICAL FEED
 ========================= */
 function formatMedical(dairy) {
   if (!dairy?.medicalAttention?.isMarked) return null;
@@ -187,6 +177,41 @@ function formatMedical(dairy) {
 }
 
 
+/* =========================================================
+   🟩 MAINTENANCE FEED (NEW)
+========================================================= */
+function formatMaintenance(update) {
+  if (update.type !== 'maintenance') return null;
+
+  return {
+    type: 'maintenance',
+    _id: update._id,
+    _sortDate: update.createdAt,
+
+    userId: update.user,
+    userName: update.user?.name || 'Unknown',
+    userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(update.user?.name || 'User')}`,
+
+    dateText: formatDate(update.createdAt),
+
+    status: update.maintenance?.status,
+
+    title:
+      update.maintenance?.status === 'marked'
+        ? '🔧 Maintenance Required'
+        : '✅ Maintenance Cleared',
+
+    maintenanceType: update.maintenance?.type,
+    description:
+      update.maintenance?.status === 'marked'
+        ? update.maintenance?.description
+        : update.maintenance?.clearDescription,
+
+    charges: update.maintenance?.charges || null
+  };
+}
+
+
 /* =========================
    MAIN FEED BUILDER
 ========================= */
@@ -203,13 +228,18 @@ exports.getDairyPage = async (id) => {
     updates.filter(u => u.type === 'post')
   );
 
+  const maintenanceFeed = updates
+    .filter(u => u.type === 'maintenance')
+    .map(formatMaintenance)
+    .filter(Boolean);
+
   const milkFeed = await getWeeklyMilkFeed(id);
   const medicalFeed = formatMedical(dairy);
 
-  /* =========================
-     MERGED TIMELINE
-  ========================= */
-  let feed = [...posts];
+  let feed = [
+    ...posts,
+    ...maintenanceFeed
+  ];
 
   if (milkFeed) feed.push(milkFeed);
   if (medicalFeed) feed.push(medicalFeed);
@@ -230,4 +260,68 @@ exports.getDairyPage = async (id) => {
 
     commentCount: updates.filter(u => u.type === 'comment').length
   };
+};
+
+
+/* =========================================================
+   🟩 MAINTENANCE SERVICE: MARK
+========================================================= */
+exports.markMaintenance = async ({ dairyId, userId, type, description }) => {
+
+  const dairy = await Dairy.findById(dairyId);
+  if (!dairy) throw new Error('Dairy not found');
+
+  if (dairy.needsMaintenance === true) {
+    throw new Error('Already marked');
+  }
+
+  dairy.needsMaintenance = true;
+  await dairy.save();
+
+  const update = await Update.create({
+    dairy: dairyId,
+    user: userId,
+    type: 'maintenance',
+    maintenance: {
+      status: 'marked',
+      type,
+      description,
+      markedAt: new Date(),
+      markedBy: userId
+    }
+  });
+
+  return update;
+};
+
+
+/* =========================================================
+   🟦 MAINTENANCE SERVICE: CLEAR
+========================================================= */
+exports.clearMaintenance = async ({ dairyId, userId, charges, description }) => {
+
+  const dairy = await Dairy.findById(dairyId);
+  if (!dairy) throw new Error('Dairy not found');
+
+  if (dairy.needsMaintenance === false) {
+    throw new Error('Not currently under maintenance');
+  }
+
+  dairy.needsMaintenance = false;
+  await dairy.save();
+
+  const update = await Update.create({
+    dairy: dairyId,
+    user: userId,
+    type: 'maintenance',
+    maintenance: {
+      status: 'cleared',
+      charges,
+      clearDescription: description,
+      clearedAt: new Date(),
+      clearedBy: userId
+    }
+  });
+
+  return update;
 };
