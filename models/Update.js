@@ -98,6 +98,75 @@ const maintenanceSchema = new mongoose.Schema({
 }, { _id: false });
 
 
+
+/* =========================
+   MEDICAL SUB-SCHEMA (NEW)
+========================= */
+const medicalSchema = new mongoose.Schema({
+
+  /* =========================
+     STATE
+  ========================= */
+  status: {
+    type: String,
+    enum: ['marked', 'cleared'],
+    required: true,
+    index: true
+  },
+
+  /* =========================
+     MARK EVENT
+  ========================= */
+  type: {
+    type: String,
+    trim: true,
+    maxlength: 200
+  },
+
+  details: {
+    type: String,
+    trim: true,
+    maxlength: 1000
+  },
+
+  markedAt: {
+    type: Date
+  },
+
+  markedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+
+  /* =========================
+     CLEAR EVENT (UNMARK)
+  ========================= */
+  clearedAt: {
+    type: Date
+  },
+
+  clearedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  charges: {
+    type: Number,
+    default: 0,
+    min: 0
+  },
+
+  clearDescription: {
+    type: String,
+    trim: true,
+    maxlength: 1000
+  }
+
+}, { _id: false });
+
+
+
 /* =========================
    MAIN UPDATE SCHEMA
 ========================= */
@@ -176,9 +245,16 @@ const updateSchema = new mongoose.Schema({
 
 
   /* =========================
-     LEGACY MEDICAL SYSTEM
+     MEDICAL SYSTEM (NEW + OPERATIONAL)
   ========================= */
-  medical: {
+  medical: medicalSchema,
+
+
+  /* =========================
+     LEGACY MEDICAL SYSTEM (BACKWARD COMPATIBLE)
+     - Keeps old records working
+  ========================= */
+  legacyMedical: {
     isMarked: { type: Boolean, default: false },
 
     type: String,
@@ -204,7 +280,8 @@ const updateSchema = new mongoose.Schema({
 updateSchema.index({ dairy: 1, createdAt: -1 });
 updateSchema.index({ type: 1 });
 updateSchema.index({ 'maintenance.status': 1 });
-updateSchema.index({ 'medical.isMarked': 1 });
+updateSchema.index({ 'medical.status': 1 });
+updateSchema.index({ 'legacyMedical.isMarked': 1 });
 
 
 module.exports = mongoose.model('Update', updateSchema);
