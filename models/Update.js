@@ -9,12 +9,19 @@ const commentSchema = new mongoose.Schema({
     type: String,
     default: () => new mongoose.Types.ObjectId().toString()
   },
+
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   },
+
   userName: String,
-  text: String,
+
+  text: {
+    type: String,
+    trim: true
+  },
+
   createdAt: {
     type: Date,
     default: Date.now
@@ -28,7 +35,7 @@ const commentSchema = new mongoose.Schema({
 const updateSchema = new mongoose.Schema({
 
   /* =========================
-     RELATIONSHIP
+     RELATIONS
   ========================= */
   dairy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -43,29 +50,34 @@ const updateSchema = new mongoose.Schema({
     required: true
   },
 
+
   /* =========================
-     TYPE SYSTEM
+     UNIFIED TYPE SYSTEM
+  =========================
+     This is what drives the feed rendering:
+     - post
+     - comment (legacy / medical comments)
+     - image
+     - medical (optional snapshot event)
   ========================= */
   type: {
     type: String,
-    enum: [
-      'image',
-      'comment',
-      'post',
-      'medical'
-    ],
+    enum: ['image', 'comment', 'post', 'medical'],
     required: true,
     index: true
   },
 
+
   /* =========================
-     🔥 LEGACY + MEDICAL COMMENTS
+     LEGACY COMMENT FIELD
+     (used by medical/general comments)
   ========================= */
   comment: {
     type: String,
     trim: true,
     maxlength: 500
   },
+
 
   /* =========================
      POST CONTENT
@@ -81,8 +93,9 @@ const updateSchema = new mongoose.Schema({
     default: null
   },
 
+
   /* =========================
-     SOCIAL FEATURES
+     SOCIAL FEATURES (POST ONLY)
   ========================= */
   likes: [
     {
@@ -93,8 +106,11 @@ const updateSchema = new mongoose.Schema({
 
   comments: [commentSchema],
 
+
   /* =========================
-     OPTIONAL MEDICAL SNAPSHOT
+     MEDICAL SNAPSHOT (OPTIONAL)
+     ⚠️ This is NOT used in feed rendering anymore
+     Feed now comes from service-layer merge
   ========================= */
   medical: {
     isMarked: { type: Boolean, default: false },
