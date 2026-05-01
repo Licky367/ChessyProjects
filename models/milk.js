@@ -2,6 +2,32 @@ const mongoose = require('mongoose');
 
 
 /* =========================
+   SALES SUB-SCHEMA (NEW)
+========================= */
+const salesSchema = new mongoose.Schema(
+  {
+    customerName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    liters: {
+      type: Number,
+      required: true,
+      min: 0
+    },
+
+    cash: {
+      type: Number,
+      required: true
+    }
+  },
+  { _id: false }
+);
+
+
+/* =========================
    STANDING ORDERS (SUB-SCHEMA)
 ========================= */
 const standingOrderSchema = new mongoose.Schema(
@@ -11,7 +37,6 @@ const standingOrderSchema = new mongoose.Schema(
 
     isActive: { type: Boolean, default: true },
 
-    // 🔥 becomes active tomorrow automatically
     effectiveDate: {
       type: Date,
       default: function () {
@@ -43,7 +68,7 @@ const milkSchema = new mongoose.Schema(
     },
 
     /* =========================
-       🔥 WHO RECORDED (NEW)
+       WHO RECORDED
     ========================= */
     recordedBy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -53,7 +78,7 @@ const milkSchema = new mongoose.Schema(
     },
 
     /* =========================
-       MILK DATA
+       MILK PRODUCTION
     ========================= */
     liters: {
       type: Number,
@@ -74,17 +99,17 @@ const milkSchema = new mongoose.Schema(
     },
 
     /* =========================
-       DATE HELPERS (FAST FILTERING)
+       DATE HELPERS
     ========================= */
     day: { type: String, index: true },   // YYYY-MM-DD
     month: { type: String, index: true }, // YYYY-MM
 
 
     /* =========================
-       DAILY FINANCIAL CORE
+       DAILY FINANCIAL SUMMARY
     ========================= */
     dailyStats: {
-      consumed: { type: Number, default: 0 },   // from SALES
+      consumed: { type: Number, default: 0 },
       available: { type: Number, default: 0 },
       price: { type: Number, default: 0 },
       cash: { type: Number, default: 0 },
@@ -93,11 +118,16 @@ const milkSchema = new mongoose.Schema(
 
 
     /* =========================
-       STANDING ORDERS (EMBEDDED)
+       🧾 CUSTOMER SALES (NEW CORE)
+    ========================= */
+    sales: [salesSchema],
+
+
+    /* =========================
+       STANDING ORDERS
     ========================= */
     standingOrders: [standingOrderSchema]
   },
-
   {
     timestamps: true,
     minimize: false
@@ -111,15 +141,15 @@ const milkSchema = new mongoose.Schema(
 milkSchema.pre('save', function (next) {
   const d = new Date(this.date);
 
-  this.day = d.toISOString().split('T')[0];   // YYYY-MM-DD
-  this.month = this.day.slice(0, 7);          // YYYY-MM
+  this.day = d.toISOString().split('T')[0];
+  this.month = this.day.slice(0, 7);
 
   next();
 });
 
 
 /* =========================
-   GET ACTIVE STANDING ORDERS
+   ACTIVE STANDING ORDERS
 ========================= */
 milkSchema.methods.getActiveStandingOrders = function () {
   const today = new Date().toISOString().split('T')[0];
@@ -149,17 +179,19 @@ milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
 
 
 /* =========================
-   SAVE DAILY STATS (FROM SALES)
+   SAVE DAILY STATS (LOCKED)
 ========================= */
 milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
 
-  // 🔥 prevent overwrite if locked
-  const existing = await this.findOne({ day, 'dailyStats.locked': true });
+  const existing = await this.findOne({
+    day,
+    'dailyStats.locked': true
+  });
+
   if (existing) {
     throw new Error('Daily stats already locked.');
   }
 
-  // total milk for the day
   const agg = await this.aggregate([
     { $match: { day } },
     { $group: { _id: null, total: { $sum: '$liters' } } }
@@ -217,7 +249,6 @@ milkSchema.statics.getMonthlyReport = async function (month) {
 
   const grouped = await this.aggregate([
     { $match: { month } },
-
     {
       $group: {
         _id: '$dairy',
@@ -225,7 +256,6 @@ milkSchema.statics.getMonthlyReport = async function (month) {
         days: { $addToSet: '$day' }
       }
     },
-
     {
       $project: {
         dairy: '$_id',
@@ -237,9 +267,6 @@ milkSchema.statics.getMonthlyReport = async function (month) {
     }
   ]);
 
-  /* =========================
-     CORRECT MONTHLY CASH
-  ========================= */
   const cashAgg = await this.aggregate([
     { $match: { month } },
     {
@@ -262,16 +289,10 @@ milkSchema.statics.getMonthlyReport = async function (month) {
 
 
 /* =========================
-   🔥 INDEXES (IMPORTANT FOR HISTORY VIEW)
+   INDEXES
 ========================= */
-
-// fast filtering per animal + month
 milkSchema.index({ dairy: 1, month: 1 });
-
-// fast per-day lookups
 milkSchema.index({ dairy: 1, day: 1 });
-
-// sorting optimization
 milkSchema.index({ date: -1 });
 
 
