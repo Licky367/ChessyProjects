@@ -3,7 +3,7 @@
   <div class="card shadow-sm p-4">
     <h2 class="mb-4">Add New Dairy Record</h2>
 
-    <form action="/dairy/new" method="POST">
+    <form action="/dairy/new" method="POST" enctype="multipart/form-data">
 
       <!-- ========================= -->
       <!-- NAME -->
@@ -20,15 +20,15 @@
       </div>
 
       <!-- ========================= -->
-      <!-- PROFILE IMAGE -->
+      <!-- PROFILE IMAGE UPLOAD -->
       <!-- ========================= -->
       <div class="mb-3">
-        <label class="form-label">Profile Image URL</label>
+        <label class="form-label">Profile Image</label>
         <input
-          type="text"
+          type="file"
           name="profileImage"
           class="form-control"
-          placeholder="Paste image URL"
+          accept="image/*"
         >
       </div>
 
@@ -42,9 +42,6 @@
           name="dob"
           class="form-control"
         >
-        <small class="text-muted">
-          If code is negative, DOB will be ignored automatically.
-        </small>
       </div>
 
       <!-- ========================= -->
@@ -59,9 +56,6 @@
           placeholder="Enter unique code"
           required
         >
-        <small class="text-muted">
-          Even = Female, Odd = Male, Negative = Non-animal
-        </small>
       </div>
 
       <!-- ========================= -->
@@ -80,9 +74,6 @@
         >
       </div>
 
-      <!-- ========================= -->
-      <!-- SUBMIT -->
-      <!-- ========================= -->
       <button type="submit" class="btn btn-success w-100">
         Save Record
       </button>
