@@ -8,7 +8,7 @@ module.exports = function (io) {
 
 
     /* =========================
-       SET USER (AUTH CONTEXT)
+       SET USER CONTEXT
     ========================= */
     socket.on('setUser', (user) => {
       socket.user = user;
@@ -16,7 +16,7 @@ module.exports = function (io) {
 
 
     /* =========================
-       JOIN DAIRY ROOM
+       JOIN ROOM
     ========================= */
     socket.on('joinDairy', (dairyId) => {
       if (!dairyId) return;
@@ -43,7 +43,7 @@ module.exports = function (io) {
 
         io.to(dairyId).emit('postCreated', {
           _id: post._id,
-          userId: post.user,
+          userId: user._id,
           userName: user.name,
           userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
           text: post.text,
@@ -178,69 +178,134 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       🚑 MEDICAL EVENTS (LEGACY REALTIME MIRROR)
+       🟥 MEDICAL MARK (REAL FLOW)
     ========================================================= */
-    socket.on('medicalMarked', ({ dairyId, type, details, userName }) => {
-      if (!dairyId) return;
+    socket.on('medicalMark', async ({ dairyId, type, details }) => {
+      try {
 
-      io.to(dairyId).emit('medicalMarked', {
-        type,
-        details,
-        userName: userName || socket.user?.name || 'System',
-        dateText: new Date().toLocaleString()
-      });
-    });
+        const user = socket.user;
+        if (!user || !dairyId) return;
 
-    socket.on('medicalUnmarked', ({ dairyId }) => {
-      if (!dairyId) return;
+        const update = await updateService.markMedicalAttention({
+          dairyId,
+          userId: user._id,
+          type,
+          details
+        });
 
-      io.to(dairyId).emit('medicalUnmarked', {
-        cleared: true
-      });
-    });
+        io.to(dairyId).emit('medicalMarked', {
+          dairyId,
+          status: 'marked',
+          type,
+          details,
+          userName: user.name,
+          userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+          dateText: new Date(update.medical.markedAt).toLocaleString()
+        });
 
-
-    /* =========================================================
-       🟩 MAINTENANCE MARKED (NEW)
-       Mirrors service + controller output
-    ========================================================= */
-    socket.on('maintenanceMarked', ({ dairyId, type, description }) => {
-      const user = socket.user;
-      if (!dairyId || !user) return;
-
-      io.to(dairyId).emit('maintenanceMarked', {
-        dairyId,
-        status: 'marked',
-        type,
-        description,
-        userName: user.name,
-        userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
-        dateText: new Date().toLocaleString()
-      });
+      } catch (err) {
+        console.error('medicalMark error:', err.message);
+      }
     });
 
 
     /* =========================================================
-       🟦 MAINTENANCE CLEARED (NEW)
+       🟪 MEDICAL UNMARK (REAL FLOW)
     ========================================================= */
-    socket.on('maintenanceCleared', ({ dairyId, charges, description }) => {
-      const user = socket.user;
-      if (!dairyId || !user) return;
+    socket.on('medicalUnmark', async ({ dairyId, charges, description }) => {
+      try {
 
-      io.to(dairyId).emit('maintenanceCleared', {
-        dairyId,
-        status: 'cleared',
-        charges,
-        description,
-        userName: user.name,
-        dateText: new Date().toLocaleString()
-      });
+        const user = socket.user;
+        if (!user || !dairyId) return;
+
+        const update = await updateService.unmarkMedicalAttention({
+          dairyId,
+          userId: user._id,
+          charges,
+          description
+        });
+
+        io.to(dairyId).emit('medicalUnmarked', {
+          dairyId,
+          status: 'cleared',
+          charges,
+          description,
+          clearedBy: user.name,
+          dateText: new Date(update.createdAt).toLocaleString()
+        });
+
+      } catch (err) {
+        console.error('medicalUnmark error:', err.message);
+      }
     });
 
 
     /* =========================================================
-       🟥 LEGACY COMMENT SYSTEM
+       🟩 MAINTENANCE MARK
     ========================================================= */
+    socket.on('maintenanceMark', async ({ dairyId, type, description }) => {
+      try {
+
+        const user = socket.user;
+        if (!user || !dairyId) return;
+
+        const update = await updateService.markMaintenance({
+          dairyId,
+          userId: user._id,
+          type,
+          description
+        });
+
+        io.to(dairyId).emit('maintenanceMarked', {
+          dairyId,
+          status: 'marked',
+          type,
+          description,
+          userName: user.name,
+          userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+          dateText: new Date(update.createdAt).toLocaleString()
+        });
+
+      } catch (err) {
+        console.error('maintenanceMark error:', err.message);
+      }
+    });
+
+
+    /* =========================================================
+       🟦 MAINTENANCE CLEAR
+    ========================================================= */
+    socket.on('maintenanceClear', async ({ dairyId, charges, description }) => {
+      try {
+
+        const user = socket.user;
+        if (!user || !dairyId) return;
+
+        const update = await updateService.clearMaintenance({
+          dairyId,
+          userId: user._id,
+          charges,
+          description
+        });
+
+        io.to(dairyId).emit('maintenanceCleared', {
+          dairyId,
+          status: 'cleared',
+          charges,
+          description,
+          userName: user.name,
+          dateText: new Date(update.createdAt).toLocaleString()
+        });
+
+      } catch (err) {
+        console.error('maintenanceClear error:', err.message);
+      }
+    });
+
+
+    /* =========================
+       LEGACY COMMENT
+    ========================= */
     socket.on('newComment', async ({ dairyId, comment }) => {
       try {
 
