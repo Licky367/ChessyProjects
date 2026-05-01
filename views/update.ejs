@@ -38,7 +38,6 @@
 <div class="meta"><strong>Age:</strong> <%= dairy.ageText %></div>
 <% } %>
 
-<% if (dairy.hasIdentity) { %>
 <div class="meta">
 <strong>Mass:</strong>
 <% if (user?.role === 'admin') { %>
@@ -47,7 +46,6 @@
 <%= dairy.mass %>
 <% } %> Kgs
 </div>
-<% } %>
 
 <% if (dairy.isFemale) { %>
 <div class="meta">
@@ -114,17 +112,12 @@ required
 
 <div class="feed-card" data-id="<%= post._id %>">
 
-<!-- HEADER -->
 <div class="feed-header">
 
 <div class="feed-user">
-<img 
-src="<%= post.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(post.userName) %>" 
-class="avatar-sm"
->
-
+<img src="<%= post.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(post.userName) %>" class="avatar-sm">
 <div>
-<strong><%= post.userName %></strong><br>
+<strong><%= post.userName %></strong>
 <small><%= post.dateText %></small>
 </div>
 </div>
@@ -135,53 +128,14 @@ class="avatar-sm"
 
 </div>
 
-<!-- BODY -->
 <div class="feed-body">
-
-<!-- TEXT -->
-<% if (post.text) { %>
 <p><%= post.text %></p>
-<% } %>
 
-<!-- IMAGE -->
 <% if (post.image) { %>
 <img src="/uploads/<%= post.image %>" class="feed-img">
 <% } %>
-
-<!-- 🟩 WEEKLY MILKING TABLE -->
-<% if (post.type === 'weekly') { %>
-
-<div class="weekly-block">
-
-<table class="weekly-table">
-<thead>
-<tr>
-<th>Day</th>
-<th>Total (L)</th>
-</tr>
-</thead>
-
-<tbody>
-<% post.weekly.days.forEach(d => { %>
-<tr>
-<td><%= d.day %></td>
-<td><%= d.total %> L</td>
-</tr>
-<% }) %>
-</tbody>
-</table>
-
-<div class="weekly-average">
-Average: <strong><%= post.weekly.average %> L/day</strong>
 </div>
 
-</div>
-
-<% } %>
-
-</div>
-
-<!-- ACTIONS -->
 <div class="feed-actions">
 
 <button class="like-btn" data-id="<%= post._id %>">
@@ -194,29 +148,20 @@ Average: <strong><%= post.weekly.average %> L/day</strong>
 
 </div>
 
-<!-- COMMENTS -->
 <div class="comment-section">
 
 <% post.comments.forEach(c => { %>
 <div class="comment-item" data-id="<%= c._id %>">
 
 <div class="comment-user">
-<img 
-src="<%= c.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.userName) %>" 
-class="avatar-xs"
->
-
+<img src="<%= c.userImage || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(c.userName) %>" class="avatar-xs">
 <div>
 <strong><%= c.userName %></strong><br>
 <%= c.text %>
 </div>
 </div>
 
-<% if (user && (
-user._id.toString() === c.userId.toString() ||
-user._id.toString() === post.userId.toString() ||
-user.role === 'admin'
-)) { %>
+<% if (user && (user._id.toString() === c.userId.toString() || user.role === 'admin' || user._id.toString() === post.userId.toString())) { %>
 <button class="delete-comment" data-id="<%= c._id %>">❌</button>
 <% } %>
 
@@ -235,6 +180,103 @@ user.role === 'admin'
 </div>
 
 <% }) %>
+
+</div>
+
+
+<!-- ========================= -->
+<!-- 🟩 WEEKLY MILKING FEED -->
+<!-- ========================= -->
+
+<% if (weeklyFeed) { %>
+
+<div class="feed-card">
+
+<div class="feed-header">
+
+<div class="feed-user">
+<img src="https://ui-avatars.com/api/?name=System&background=198754&color=fff" class="avatar-sm">
+<div>
+<strong>System</strong>
+<small><%= weeklyFeed.weekEndText %></small>
+</div>
+</div>
+
+</div>
+
+<div class="feed-body">
+
+<div class="feed-title">
+📊 Weekly milking summary of <%= dairy.name %><br>
+<small><%= weeklyFeed.weekStart %> → <%= weeklyFeed.weekEnd %></small>
+</div>
+
+<table class="weekly-table">
+<thead>
+<tr>
+<th>Day</th>
+<th>Total (L)</th>
+</tr>
+</thead>
+<tbody>
+
+<% weeklyFeed.days.forEach(d => { %>
+<tr>
+<td><%= d.day %></td>
+<td><%= d.total %> L</td>
+</tr>
+<% }) %>
+
+</tbody>
+</table>
+
+<div class="weekly-average">
+Average: <strong><%= weeklyFeed.average %> L/day</strong>
+</div>
+
+</div>
+
+</div>
+
+<% } %>
+
+
+<!-- ========================= -->
+<!-- MEDICAL FEED (UNCHANGED + AVATAR ADDED) -->
+<!-- ========================= -->
+
+<% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
+
+<div id="medicalFeed" class="medical-feed-card">
+
+<div class="feed-header">
+
+<div class="feed-user">
+<img src="https://ui-avatars.com/api/?name=<%= user?.name || 'System' %>&background=c62828&color=fff" class="avatar-sm">
+<div>
+<strong><%= user?.name || 'System' %></strong>
+<small><%= new Date(dairy.medicalAttention.markedAt).toLocaleString() %></small>
+</div>
+</div>
+
+</div>
+
+<div class="feed-body">
+<div class="feed-title">🚨 Medical Attention Required</div>
+<div>
+<strong>Type:</strong> <%= dairy.medicalAttention.type %><br>
+<strong>Details:</strong> <%= dairy.medicalAttention.details %>
+</div>
+</div>
+
+<div class="feed-actions">
+👍 <span id="medicalLikeCount"><%= dairy.medicalAttention.likes || 0 %></span>
+💬 <span><%= commentCount %></span>
+</div>
+
+</div>
+
+<% } %>
 
 </div>
 
@@ -289,6 +331,12 @@ gap:10px;
 margin-top:8px;
 }
 
+.feed-actions button{
+border:none;
+background:none;
+cursor:pointer;
+}
+
 .comment-section{
 display:none;
 margin-top:10px;
@@ -298,17 +346,22 @@ margin-top:10px;
 display:block;
 }
 
-.comment-user{
-display:flex;
-gap:8px;
-}
-
 .delete-post,
 .delete-comment{
 color:red;
 border:none;
 background:none;
 cursor:pointer;
+float:right;
+}
+
+.medical-feed-card{
+background:#fff;
+border-left:5px solid #c62828;
+padding:12px;
+margin-top:15px;
+border-radius:10px;
+box-shadow:0 4px 10px rgba(0,0,0,.08);
 }
 
 .weekly-table{
@@ -321,7 +374,6 @@ margin-top:10px;
 .weekly-table td{
 border:1px solid #ddd;
 padding:6px;
-font-size:13px;
 }
 
 .weekly-average{
@@ -331,96 +383,3 @@ color:#2e7d32;
 }
 
 </style>
-
-
-<!-- ========================= -->
-<!-- SOCKET + JS -->
-<!-- ========================= -->
-
-<script>
-
-const dairyId = "<%= dairy._id %>";
-const socket = io();
-
-socket.emit("joinDairy", dairyId);
-
-<% if (user) { %>
-socket.emit("setUser", {
-_id: "<%= user._id %>",
-name: "<%= user.name %>",
-role: "<%= user.role %>"
-});
-<% } %>
-
-
-/* CREATE POST */
-document.getElementById("postForm")?.addEventListener("submit", async e => {
-e.preventDefault();
-
-const formData = new FormData();
-formData.append("text", postText.value);
-if(postImage.files[0]) formData.append("image", postImage.files[0]);
-
-await fetch(`/dairy/${dairyId}/post`,{
-method:"POST",
-body:formData
-});
-
-postText.value = "";
-postImage.value = "";
-});
-
-
-/* LIKE */
-document.addEventListener("click", async e=>{
-if(e.target.closest(".like-btn")){
-const id = e.target.closest(".like-btn").dataset.id;
-await fetch(`/post/${id}/like`,{method:"POST"});
-}
-});
-
-
-/* TOGGLE COMMENTS */
-document.addEventListener("click", e=>{
-if(e.target.closest(".toggle-comments")){
-const card = e.target.closest(".feed-card");
-card.querySelector(".comment-section").classList.toggle("active");
-}
-});
-
-
-/* COMMENT */
-document.addEventListener("submit", async e=>{
-if(e.target.classList.contains("comment-form")){
-e.preventDefault();
-
-const id = e.target.dataset.id;
-const text = e.target.querySelector("textarea").value;
-
-await fetch(`/post/${id}/comment`,{
-method:"POST",
-headers:{ "Content-Type":"application/json" },
-body: JSON.stringify({ text })
-});
-
-e.target.querySelector("textarea").value="";
-}
-});
-
-
-/* DELETE POST */
-document.addEventListener("click", async e=>{
-if(e.target.classList.contains("delete-post")){
-await fetch(`/post/${e.target.dataset.id}`,{method:"DELETE"});
-}
-});
-
-
-/* DELETE COMMENT */
-document.addEventListener("click", async e=>{
-if(e.target.classList.contains("delete-comment")){
-await fetch(`/comment/${e.target.dataset.id}`,{method:"DELETE"});
-}
-});
-
-</script>
