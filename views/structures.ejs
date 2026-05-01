@@ -32,7 +32,7 @@
 
                 <div class="wa-subtext">Facility Code: <%= dairy.code %></div>
 
-                <!-- MAINTENANCE STATUS -->
+                <!-- STATUS -->
                 <div class="wa-subtext">
                   Status:
                   <% if (dairy.needsMaintenance) { %>
@@ -46,17 +46,21 @@
 
             </a>
 
-            <!-- ACTIONS (outside link to avoid nested click issues) -->
+            <!-- ACTIONS -->
             <div style="padding:10px 14px; display:flex; gap:10px; flex-wrap:wrap;">
 
-              <!-- MARK MAINTENANCE (admin + dairyWorker) -->
-              <% if (user && (user.role === 'admin' || user.role === 'dairyWorker')) { %>
+              <!-- CASE 1: OK → CAN MARK MAINTENANCE -->
+              <% if (user && (user.role === 'admin' || user.role === 'dairyWorker') && !dairy.needsMaintenance) { %>
 
-                <button onclick="toggleForm('<%= dairy._id %>')" style="padding:6px 10px; border:none; background:#0b5d1e; color:#fff; border-radius:6px; cursor:pointer;">
+                <button onclick="toggleForm('<%= dairy._id %>')" 
+                        style="padding:6px 10px; border:none; background:#0b5d1e; color:#fff; border-radius:6px; cursor:pointer;">
                   Mark Maintenance
                 </button>
 
-                <form id="form-<%= dairy._id %>" action="/dairy/<%= dairy._id %>/maintenance/mark" method="POST" style="display:none; margin-top:10px; width:100%;">
+                <form id="form-<%= dairy._id %>" 
+                      action="/dairy/<%= dairy._id %>/maintenance/mark" 
+                      method="POST" 
+                      style="display:none; margin-top:10px; width:100%;">
 
                   <select name="type" required style="padding:6px; width:100%; margin-bottom:6px;">
                     <option value="">Select Type</option>
@@ -65,9 +69,13 @@
                     <option value="construction">Construction</option>
                   </select>
 
-                  <textarea name="description" placeholder="Describe issue..." required style="width:100%; padding:6px; margin-bottom:6px;"></textarea>
+                  <textarea name="description" 
+                            placeholder="Describe issue..." 
+                            required 
+                            style="width:100%; padding:6px; margin-bottom:6px;"></textarea>
 
-                  <button type="submit" style="padding:6px 10px; background:#b00020; color:#fff; border:none; border-radius:6px;">
+                  <button type="submit" 
+                          style="padding:6px 10px; background:#b00020; color:#fff; border:none; border-radius:6px;">
                     Submit
                   </button>
 
@@ -75,13 +83,17 @@
 
               <% } %>
 
-              <!-- UNMARK (admin only) -->
+
+              <!-- CASE 2: NEEDS MAINTENANCE → ONLY ADMIN CAN UNMARK -->
               <% if (user && user.role === 'admin' && dairy.needsMaintenance) { %>
 
                 <form action="/dairy/<%= dairy._id %>/maintenance/clear" method="POST">
-                  <button type="submit" style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
-                    Unmark
+
+                  <button type="submit" 
+                          style="padding:6px 10px; background:#444; color:#fff; border:none; border-radius:6px; cursor:pointer;">
+                    Unmark Maintenance
                   </button>
+
                 </form>
 
               <% } %>
@@ -116,10 +128,6 @@ function toggleForm(id){
 </script>
 
 <style>
-/* ========================= */
-/* WHATSAPP STYLE LIST */
-/* ========================= */
-
 .container{
   max-width:1000px;
   margin:auto;
@@ -155,10 +163,6 @@ function toggleForm(id){
 
 .wa-link:hover{
   background:#f4f6f8;
-}
-
-.wa-avatar-box{
-  flex:0 0 auto;
 }
 
 .wa-avatar{
