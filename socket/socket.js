@@ -6,6 +6,7 @@ module.exports = function (io) {
 
     console.log('🔌 User connected:', socket.id);
 
+
     /* =========================
        SET USER (AUTH CONTEXT)
     ========================= */
@@ -24,8 +25,7 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       🟦 CREATE POST (REALTIME)
-       → single source of truth: service
+       🟦 CREATE POST
     ========================================================= */
     socket.on('createPost', async ({ dairyId, text, image }) => {
       try {
@@ -41,7 +41,7 @@ module.exports = function (io) {
           image
         });
 
-        const payload = {
+        io.to(dairyId).emit('postCreated', {
           _id: post._id,
           userId: post.user,
           userName: user.name,
@@ -52,9 +52,7 @@ module.exports = function (io) {
           comments: [],
           createdAt: post.createdAt,
           dateText: new Date(post.createdAt).toLocaleString()
-        };
-
-        io.to(dairyId).emit('postCreated', payload);
+        });
 
       } catch (err) {
         console.error('createPost error:', err.message);
@@ -63,7 +61,7 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       👍 TOGGLE LIKE
+       👍 LIKE POST
     ========================================================= */
     socket.on('likePost', async ({ postId, dairyId }) => {
       try {
@@ -88,7 +86,7 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       💬 ADD COMMENT
+       💬 POST COMMENT
     ========================================================= */
     socket.on('postComment', async ({ postId, dairyId, text }) => {
       try {
@@ -103,16 +101,14 @@ module.exports = function (io) {
           text
         });
 
-        const payload = {
+        io.to(dairyId).emit('postCommentAdded', {
           postId,
           comment: {
             ...comment,
             userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
             dateText: new Date(comment.createdAt).toLocaleString()
           }
-        };
-
-        io.to(dairyId).emit('postCommentAdded', payload);
+        });
 
       } catch (err) {
         console.error('postComment error:', err.message);
@@ -172,7 +168,7 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       🟨 IMAGE UPDATE (REALTIME SYNC)
+       🟨 IMAGE UPDATE
     ========================================================= */
     socket.on('imageUpdated', ({ dairyId, image }) => {
       if (!dairyId || !image) return;
@@ -182,9 +178,8 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       🚑 MEDICAL EVENTS (CLEANED)
+       🚑 MEDICAL EVENTS (LEGACY REALTIME MIRROR)
     ========================================================= */
-
     socket.on('medicalMarked', ({ dairyId, type, details, userName }) => {
       if (!dairyId) return;
 
@@ -206,7 +201,45 @@ module.exports = function (io) {
 
 
     /* =========================================================
-       🟥 LEGACY SUPPORT (OLD COMMENT SYSTEM)
+       🟩 MAINTENANCE MARKED (NEW)
+       Mirrors service + controller output
+    ========================================================= */
+    socket.on('maintenanceMarked', ({ dairyId, type, description }) => {
+      const user = socket.user;
+      if (!dairyId || !user) return;
+
+      io.to(dairyId).emit('maintenanceMarked', {
+        dairyId,
+        status: 'marked',
+        type,
+        description,
+        userName: user.name,
+        userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+        dateText: new Date().toLocaleString()
+      });
+    });
+
+
+    /* =========================================================
+       🟦 MAINTENANCE CLEARED (NEW)
+    ========================================================= */
+    socket.on('maintenanceCleared', ({ dairyId, charges, description }) => {
+      const user = socket.user;
+      if (!dairyId || !user) return;
+
+      io.to(dairyId).emit('maintenanceCleared', {
+        dairyId,
+        status: 'cleared',
+        charges,
+        description,
+        userName: user.name,
+        dateText: new Date().toLocaleString()
+      });
+    });
+
+
+    /* =========================================================
+       🟥 LEGACY COMMENT SYSTEM
     ========================================================= */
     socket.on('newComment', async ({ dairyId, comment }) => {
       try {
