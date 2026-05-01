@@ -1,5 +1,6 @@
 const Update = require('../models/Update');
 const Dairy = require('../models/dairy');
+const Milk = require('../models/milk');
 
 
 /* =========================
@@ -36,6 +37,97 @@ function calculateAge(dob) {
 function formatDate(date) {
   if (!date) return '';
   return new Date(date).toLocaleString();
+}
+
+
+/* =========================
+   🆕 WEEK HELPERS
+========================= */
+function getWeekRange(date) {
+  const d = new Date(date);
+
+  const day = d.getDay(); // 0 (Sun) - 6 (Sat)
+  const diffToMonday = (day === 0 ? -6 : 1 - day);
+
+  const start = new Date(d);
+  start.setDate(d.getDate() + diffToMonday);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+
+  return { start, end };
+}
+
+
+/* =========================
+   🆕 WEEKLY MILK SUMMARY
+========================= */
+async function getWeeklyMilkSummary(dairyId) {
+
+  const dairy = await Dairy.findById(dairyId);
+  if (!dairy || !dairy.isMilking) return [];
+
+  const records = await Milk.find({ dairy: dairyId })
+    .sort({ date: -1 });
+
+  if (!records.length) return [];
+
+  const weeks = {};
+
+  records.forEach(r => {
+    const { start, end } = getWeekRange(r.date);
+    const key = start.toISOString();
+
+    if (!weeks[key]) {
+      weeks[key] = {
+        weekStart: start,
+        weekEnd: end,
+        days: {},
+        total: 0
+      };
+    }
+
+    const dayKey = r.day;
+
+    if (!weeks[key].days[dayKey]) {
+      weeks[key].days[dayKey] = 0;
+    }
+
+    weeks[key].days[dayKey] += r.liters;
+    weeks[key].total += r.liters;
+  });
+
+  /* FORMAT */
+  return Object.values(weeks)
+    .sort((a, b) => b.weekStart - a.weekStart)
+    .slice(0, 6) // last 6 weeks
+    .map(w => {
+
+      const daysArr = Object.keys(w.days)
+        .sort()
+        .map(d => ({
+          day: d,
+          total: w.days[d]
+        }));
+
+      const avg = daysArr.length
+        ? (w.total / daysArr.length).toFixed(2)
+        : 0;
+
+      return {
+        userName: 'System',
+        avatar: `https://ui-avatars.com/api/?name=System&background=0d6efd&color=fff`,
+        dateText: new Date(w.weekEnd).toLocaleString(),
+
+        title: `Weekly milking summary of ${dairy.name} from ${w.weekStart.toISOString().split('T')[0]} to ${w.weekEnd.toISOString().split('T')[0]}`,
+
+        days: daysArr,
+        total: w.total,
+        average: avg
+      };
+    });
 }
 
 
@@ -79,14 +171,14 @@ exports.formatDairy = (dairy, imageUpdates = []) => {
       type: dairy?.medicalAttention?.type || '',
       details: dairy?.medicalAttention?.details || '',
       markedAt: dairy?.medicalAttention?.markedAt || null,
-      likes: dairy?.medicalAttention?.likes || 0 // ✅ NEW
+      likes: dairy?.medicalAttention?.likes || 0
     }
   };
 };
 
 
 /* =========================
-   FORMAT COMMENTS (MEDICAL)
+   FORMAT COMMENTS
 ========================= */
 exports.formatUpdates = (updates = []) => {
   return updates
@@ -95,6 +187,7 @@ exports.formatUpdates = (updates = []) => {
       _id: u._id,
       comment: u.comment,
       userName: u.user?.name || 'User',
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(u.user?.name || 'User')}&background=6c757d&color=fff`,
       dateText: formatDate(u.createdAt),
       createdAt: u.createdAt
     }));
@@ -102,13 +195,14 @@ exports.formatUpdates = (updates = []) => {
 
 
 /* =========================
-   FORMAT POSTS (NEW)
+   FORMAT POSTS
 ========================= */
 exports.formatPosts = (posts = []) => {
   return posts.map(p => ({
     _id: p._id,
     userId: p.user,
     userName: p.userName,
+    avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(p.userName)}&background=198754&color=fff`,
     text: p.text || '',
     image: p.image || null,
     likes: p.likes?.length || 0,
@@ -116,6 +210,7 @@ exports.formatPosts = (posts = []) => {
       _id: c._id,
       userId: c.userId,
       userName: c.userName,
+      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(c.userName)}&background=6c757d&color=fff`,
       text: c.text,
       dateText: formatDate(c.createdAt)
     })),
@@ -147,21 +242,24 @@ exports.getDairyPage = async (id) => {
 
   const posts = exports.formatPosts(postsRaw);
 
+  const weeklyMilk = await getWeeklyMilkSummary(id); // ✅ NEW
+
   return {
     dairy: exports.formatDairy(dairy, imageUpdates),
     updates: comments,
     posts,
+    weeklyMilk, // ✅ NEW
     commentCount: comments.length
   };
 };
 
 
 /* =========================
-   CREATE POST
+   POSTS SYSTEM (UNCHANGED)
 ========================= */
-exports.createPost = async ({ dairyId, userId, userName, text, image }) => {
 
-  const post = await Update.create({
+exports.createPost = async ({ dairyId, userId, userName, text, image }) => {
+  return Update.create({
     dairy: dairyId,
     user: userId,
     userName,
@@ -171,38 +269,23 @@ exports.createPost = async ({ dairyId, userId, userName, text, image }) => {
     likes: [],
     comments: []
   });
-
-  return post;
 };
 
-
-/* =========================
-   TOGGLE LIKE
-========================= */
 exports.toggleLike = async ({ postId, userId }) => {
-
   const post = await Update.findById(postId);
   if (!post) throw new Error('Post not found');
 
   const index = post.likes.findIndex(id => id.toString() === userId.toString());
 
-  if (index > -1) {
-    post.likes.splice(index, 1);
-  } else {
-    post.likes.push(userId);
-  }
+  if (index > -1) post.likes.splice(index, 1);
+  else post.likes.push(userId);
 
   await post.save();
 
   return { likes: post.likes.length };
 };
 
-
-/* =========================
-   ADD POST COMMENT
-========================= */
 exports.addPostComment = async ({ postId, userId, userName, text }) => {
-
   const post = await Update.findById(postId);
   if (!post) throw new Error('Post not found');
 
@@ -220,12 +303,7 @@ exports.addPostComment = async ({ postId, userId, userName, text }) => {
   return comment;
 };
 
-
-/* =========================
-   DELETE POST
-========================= */
 exports.deletePost = async ({ postId, user }) => {
-
   const post = await Update.findById(postId);
   if (!post) return false;
 
@@ -235,16 +313,10 @@ exports.deletePost = async ({ postId, user }) => {
   if (!isOwner && !isAdmin) return false;
 
   await post.deleteOne();
-
   return true;
 };
 
-
-/* =========================
-   DELETE COMMENT
-========================= */
 exports.deleteComment = async ({ commentId, user }) => {
-
   const post = await Update.findOne({ "comments._id": commentId });
   if (!post) return false;
 
