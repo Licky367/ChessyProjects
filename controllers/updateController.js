@@ -1,11 +1,9 @@
 const updateService = require('../services/updateService');
 
 
-/**
- * ===========================
- * VIEW DAIRY PROJECTS
- * ===========================
- */
+/* =========================================================
+   🟩 VIEW DAIRY PROJECTS
+========================================================= */
 exports.viewDairyProjects = async (req, res) => {
   try {
     const dairies = await updateService.getPositiveDairies();
@@ -23,11 +21,9 @@ exports.viewDairyProjects = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * VIEW STRUCTURES
- * ===========================
- */
+/* =========================================================
+   🟦 VIEW STRUCTURES
+========================================================= */
 exports.viewStructures = async (req, res) => {
   try {
     const dairies = await updateService.getNegativeDairies();
@@ -45,11 +41,9 @@ exports.viewStructures = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * VIEW PROFILE PAGE
- * ===========================
- */
+/* =========================================================
+   🟨 VIEW PROFILE PAGE (MAIN FEED)
+========================================================= */
 exports.viewPage = async (req, res) => {
   try {
     const { id } = req.params;
@@ -58,10 +52,13 @@ exports.viewPage = async (req, res) => {
 
     res.render('update', {
       title: 'Dairy Profile',
+
       dairy: data.dairy,
-      updates: data.updates,
-      posts: data.posts || [],
-      weeklyMilk: data.weeklyMilk || [], // ✅ NEW (weekly system feed)
+      updates: data.updates,          // medical/comments
+      posts: data.posts || [],        // social posts
+
+      weeklyMilk: data.weeklyFeed || null,  // ✅ FIXED NAME MATCH
+
       commentCount: data.commentCount,
       user: req.session.user || null
     });
@@ -73,11 +70,9 @@ exports.viewPage = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * ADD MEDICAL COMMENT
- * ===========================
- */
+/* =========================================================
+   🟩 ADD MEDICAL COMMENT (GENERAL COMMENTS)
+========================================================= */
 exports.comment = async (req, res) => {
   try {
     const { id } = req.params;
@@ -103,6 +98,7 @@ exports.comment = async (req, res) => {
       _id: saved._id,
       comment: saved.comment,
       userName: user.name,
+      userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
       dateText: new Date(saved.createdAt).toLocaleString(),
       createdAt: saved.createdAt
     };
@@ -112,11 +108,7 @@ exports.comment = async (req, res) => {
       io.to(id).emit('commentAdded', payload);
     }
 
-    const wantsJSON =
-      req.xhr ||
-      req.headers.accept?.includes('json');
-
-    if (wantsJSON) {
+    if (req.xhr || req.headers.accept?.includes('json')) {
       return res.json(payload);
     }
 
@@ -129,11 +121,9 @@ exports.comment = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * UPDATE IMAGE
- * ===========================
- */
+/* =========================================================
+   🟦 UPDATE IMAGE (PROFILE IMAGE FEED EVENT)
+========================================================= */
 exports.image = async (req, res) => {
   try {
     const { id } = req.params;
@@ -142,18 +132,22 @@ exports.image = async (req, res) => {
     if (!user) return res.status(401).send('Unauthorized');
     if (!req.file) return res.status(400).send('No image uploaded');
 
-    await updateService.updateImage({
+    const result = await updateService.updateImage({
       dairyId: id,
       userId: user._id,
       image: req.file.filename
     });
 
-    const io = req.app.get('io');
+    const payload = {
+      dairyId: id,
+      image: `/uploads/${req.file.filename}`,
+      userName: user.name,
+      dateText: new Date().toLocaleString()
+    };
 
+    const io = req.app.get('io');
     if (io) {
-      io.to(id).emit('imageUpdated', {
-        image: `/uploads/${req.file.filename}`
-      });
+      io.to(id).emit('imageUpdated', payload);
     }
 
     res.redirect(`/dairy/${id}`);
@@ -165,11 +159,9 @@ exports.image = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * MARK MEDICAL ATTENTION
- * ===========================
- */
+/* =========================================================
+   🟥 MARK MEDICAL ATTENTION
+========================================================= */
 exports.markMedicalAttention = async (req, res) => {
   try {
     const { id } = req.params;
@@ -199,11 +191,11 @@ exports.markMedicalAttention = async (req, res) => {
       type: updated.medicalAttention.type,
       details: updated.medicalAttention.details,
       userName: user.name,
+      userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
       dateText: new Date(updated.medicalAttention.markedAt).toLocaleString()
     };
 
     const io = req.app.get('io');
-
     if (io) {
       io.to(id).emit('medicalMarked', payload);
     }
@@ -217,11 +209,9 @@ exports.markMedicalAttention = async (req, res) => {
 };
 
 
-/**
- * ===========================
- * UNMARK MEDICAL ATTENTION
- * ===========================
- */
+/* =========================================================
+   🟪 UNMARK MEDICAL ATTENTION
+========================================================= */
 exports.unmarkMedicalAttention = async (req, res) => {
   try {
     const { id } = req.params;
@@ -237,15 +227,16 @@ exports.unmarkMedicalAttention = async (req, res) => {
       dairyId: id
     });
 
-    const io = req.app.get('io');
+    const payload = {
+      dairyId: id,
+      cleared: true,
+      userName: user.name,
+      dateText: new Date().toLocaleString()
+    };
 
+    const io = req.app.get('io');
     if (io) {
-      io.to(id).emit('medicalUnmarked', {
-        dairyId: id,
-        cleared: true,
-        userName: user.name,
-        dateText: new Date().toLocaleString()
-      });
+      io.to(id).emit('medicalUnmarked', payload);
     }
 
     res.redirect(`/dairy/${id}`);
@@ -287,7 +278,16 @@ exports.createPost = async (req, res) => {
     });
 
     const payload = {
-      ...post,
+      _id: post._id,
+      dairy: id,
+      userId: user._id,
+      userName: user.name,
+      userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`,
+      text,
+      image,
+      likes: 0,
+      comments: [],
+      createdAt: post.createdAt,
       dateText: new Date(post.createdAt).toLocaleString()
     };
 
@@ -306,7 +306,7 @@ exports.createPost = async (req, res) => {
 
 
 /**
- * LIKE / UNLIKE POST
+ * LIKE POST
  */
 exports.likePost = async (req, res) => {
   try {
@@ -320,12 +320,15 @@ exports.likePost = async (req, res) => {
       userId: user._id
     });
 
+    const payload = {
+      postId: id,
+      likes: result.likes,
+      userId: user._id
+    };
+
     const io = req.app.get('io');
     if (io) {
-      io.emit('postLiked', {
-        postId: id,
-        likes: result.likes
-      });
+      io.to(result.dairyId || id).emit('postLiked', payload);
     }
 
     res.json(result);
@@ -338,7 +341,7 @@ exports.likePost = async (req, res) => {
 
 
 /**
- * ADD COMMENT TO POST
+ * ADD POST COMMENT
  */
 exports.addPostComment = async (req, res) => {
   try {
@@ -357,12 +360,17 @@ exports.addPostComment = async (req, res) => {
       text
     });
 
+    const payload = {
+      postId: id,
+      comment: {
+        ...comment,
+        userImage: `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name)}`
+      }
+    };
+
     const io = req.app.get('io');
     if (io) {
-      io.emit('postCommentAdded', {
-        postId: id,
-        comment
-      });
+      io.to(id).emit('postCommentAdded', payload);
     }
 
     res.json(comment);
@@ -395,7 +403,7 @@ exports.deletePost = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('postDeleted', { postId: id });
+      io.to(id).emit('postDeleted', { postId: id });
     }
 
     res.json({ success: true });
@@ -428,7 +436,7 @@ exports.deleteComment = async (req, res) => {
 
     const io = req.app.get('io');
     if (io) {
-      io.emit('commentDeleted', { commentId: id });
+      io.to(id).emit('commentDeleted', { commentId: id });
     }
 
     res.json({ success: true });
