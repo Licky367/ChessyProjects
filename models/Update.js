@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
    COMMENT SUB-SCHEMA
 ========================= */
 const commentSchema = new mongoose.Schema({
+
   _id: {
     type: String,
     default: () => new mongoose.Types.ObjectId().toString()
@@ -19,23 +20,26 @@ const commentSchema = new mongoose.Schema({
 
   text: {
     type: String,
-    trim: true
+    trim: true,
+    maxlength: 1000
   },
 
   createdAt: {
     type: Date,
     default: Date.now
   }
+
 }, { _id: false });
 
 
 /* =========================
    MAINTENANCE SUB-SCHEMA
-   (NEW - CORE ADDITION)
 ========================= */
 const maintenanceSchema = new mongoose.Schema({
 
-  /* ===== STATE ===== */
+  /* =========================
+     STATE
+  ========================= */
   status: {
     type: String,
     enum: ['marked', 'cleared'],
@@ -43,7 +47,9 @@ const maintenanceSchema = new mongoose.Schema({
     index: true
   },
 
-  /* ===== MARK ACTION ===== */
+  /* =========================
+     MARK EVENT
+  ========================= */
   type: {
     type: String,
     enum: ['repair', 'maintenance', 'construction'],
@@ -64,7 +70,10 @@ const maintenanceSchema = new mongoose.Schema({
     ref: 'User'
   },
 
-  /* ===== CLEAR ACTION ===== */
+
+  /* =========================
+     CLEAR EVENT
+  ========================= */
   clearedAt: {
     type: Date
   },
@@ -76,6 +85,7 @@ const maintenanceSchema = new mongoose.Schema({
 
   charges: {
     type: Number,
+    default: 0,
     min: 0
   },
 
@@ -115,7 +125,7 @@ const updateSchema = new mongoose.Schema({
   ========================= */
   type: {
     type: String,
-    enum: ['image', 'comment', 'post', 'medical', 'maintenance'],
+    enum: ['image', 'comment', 'post', 'medical', 'maintenance', 'milk'],
     required: true,
     index: true
   },
@@ -160,19 +170,23 @@ const updateSchema = new mongoose.Schema({
 
 
   /* =========================
-     MAINTENANCE (NEW SYSTEM)
+     MAINTENANCE SYSTEM
   ========================= */
   maintenance: maintenanceSchema,
 
 
   /* =========================
-     LEGACY MEDICAL (UNCHANGED)
+     LEGACY MEDICAL SYSTEM
   ========================= */
   medical: {
     isMarked: { type: Boolean, default: false },
+
     type: String,
+
     details: String,
+
     markedAt: Date,
+
     markedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
@@ -185,11 +199,12 @@ const updateSchema = new mongoose.Schema({
 
 
 /* =========================
-   INDEXES (PERFORMANCE)
+   INDEXES
 ========================= */
 updateSchema.index({ dairy: 1, createdAt: -1 });
 updateSchema.index({ type: 1 });
 updateSchema.index({ 'maintenance.status': 1 });
+updateSchema.index({ 'medical.isMarked': 1 });
 
 
 module.exports = mongoose.model('Update', updateSchema);
