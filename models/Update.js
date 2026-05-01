@@ -30,6 +30,65 @@ const commentSchema = new mongoose.Schema({
 
 
 /* =========================
+   MAINTENANCE SUB-SCHEMA
+   (NEW - CORE ADDITION)
+========================= */
+const maintenanceSchema = new mongoose.Schema({
+
+  /* ===== STATE ===== */
+  status: {
+    type: String,
+    enum: ['marked', 'cleared'],
+    required: true,
+    index: true
+  },
+
+  /* ===== MARK ACTION ===== */
+  type: {
+    type: String,
+    enum: ['repair', 'maintenance', 'construction'],
+  },
+
+  description: {
+    type: String,
+    trim: true,
+    maxlength: 1000
+  },
+
+  markedAt: {
+    type: Date
+  },
+
+  markedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  /* ===== CLEAR ACTION ===== */
+  clearedAt: {
+    type: Date
+  },
+
+  clearedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+
+  charges: {
+    type: Number,
+    min: 0
+  },
+
+  clearDescription: {
+    type: String,
+    trim: true,
+    maxlength: 1000
+  }
+
+}, { _id: false });
+
+
+/* =========================
    MAIN UPDATE SCHEMA
 ========================= */
 const updateSchema = new mongoose.Schema({
@@ -53,16 +112,10 @@ const updateSchema = new mongoose.Schema({
 
   /* =========================
      UNIFIED TYPE SYSTEM
-  =========================
-     This is what drives the feed rendering:
-     - post
-     - comment (legacy / medical comments)
-     - image
-     - medical (optional snapshot event)
   ========================= */
   type: {
     type: String,
-    enum: ['image', 'comment', 'post', 'medical'],
+    enum: ['image', 'comment', 'post', 'medical', 'maintenance'],
     required: true,
     index: true
   },
@@ -70,7 +123,6 @@ const updateSchema = new mongoose.Schema({
 
   /* =========================
      LEGACY COMMENT FIELD
-     (used by medical/general comments)
   ========================= */
   comment: {
     type: String,
@@ -95,7 +147,7 @@ const updateSchema = new mongoose.Schema({
 
 
   /* =========================
-     SOCIAL FEATURES (POST ONLY)
+     SOCIAL FEATURES
   ========================= */
   likes: [
     {
@@ -108,9 +160,13 @@ const updateSchema = new mongoose.Schema({
 
 
   /* =========================
-     MEDICAL SNAPSHOT (OPTIONAL)
-     ⚠️ This is NOT used in feed rendering anymore
-     Feed now comes from service-layer merge
+     MAINTENANCE (NEW SYSTEM)
+  ========================= */
+  maintenance: maintenanceSchema,
+
+
+  /* =========================
+     LEGACY MEDICAL (UNCHANGED)
   ========================= */
   medical: {
     isMarked: { type: Boolean, default: false },
@@ -133,6 +189,7 @@ const updateSchema = new mongoose.Schema({
 ========================= */
 updateSchema.index({ dairy: 1, createdAt: -1 });
 updateSchema.index({ type: 1 });
+updateSchema.index({ 'maintenance.status': 1 });
 
 
 module.exports = mongoose.model('Update', updateSchema);
