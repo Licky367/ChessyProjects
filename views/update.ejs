@@ -103,53 +103,56 @@ required
 
 
 <!-- ========================= -->
-<!-- 🟦 UNIFIED FEED (CORE CHANGE) -->
+<!-- 🟦 UNIFIED FEED (CORE) -->
 <!-- ========================= -->
 
 <div id="feed">
 
-<!-- POSTS -->
-<% posts.forEach(post => { %>
+<% feed.forEach(item => { %>
 
-<div class="feed-card" data-id="<%= post._id %>">
+<!-- ================= POST ================= -->
+<% if (item.type === 'post') { %>
+
+<div class="feed-card" data-id="<%= item._id %>">
 
 <div class="feed-header">
 
 <div class="feed-user">
-<img src="<%= post.userImage %>" class="avatar-sm">
+<img src="<%= item.userImage %>" class="avatar-sm">
 <div>
-<strong><%= post.userName %></strong>
-<small><%= post.dateText %></small>
+<strong><%= item.userName %></strong>
+<small><%= item.dateText %></small>
 </div>
 </div>
 
-<% if (user && (user._id.toString() === post.userId.toString() || user.role === 'admin')) { %>
-<button class="delete-post" data-id="<%= post._id %>">🗑</button>
+<% if (user && (user._id.toString() === item.userId.toString() || user.role === 'admin')) { %>
+<button class="delete-post" data-id="<%= item._id %>">🗑</button>
 <% } %>
 
 </div>
 
 <div class="feed-body">
-<p><%= post.text %></p>
+<p><%= item.text %></p>
 
-<% if (post.image) { %>
-<img src="/uploads/<%= post.image %>" class="feed-img">
+<% if (item.image) { %>
+<img src="/uploads/<%= item.image %>" class="feed-img">
 <% } %>
 </div>
 
 <div class="feed-actions">
-<button class="like-btn" data-id="<%= post._id %>">
-👍 <span><%= post.likes %></span>
+<button class="like-btn" data-id="<%= item._id %>">
+👍 <span><%= item.likes %></span>
 </button>
 
 <button class="toggle-comments">
-💬 <span><%= post.comments.length %></span>
+💬 <span><%= item.comments.length %></span>
 </button>
 </div>
 
 <div class="comment-section">
 
-<% post.comments.forEach(c => { %>
+<% item.comments.forEach(c => { %>
+
 <div class="comment-item">
 
 <div class="comment-user">
@@ -165,10 +168,11 @@ required
 <% } %>
 
 </div>
+
 <% }) %>
 
 <% if (user) { %>
-<form class="comment-form" data-id="<%= post._id %>">
+<form class="comment-form" data-id="<%= item._id %>">
 <textarea required></textarea>
 <button type="submit">Post</button>
 </form>
@@ -178,21 +182,21 @@ required
 
 </div>
 
-<% }) %>
+<% } %>
 
 
-<!-- 🟩 WEEKLY SYSTEM POST (NOW INSIDE FEED) -->
-<% if (weeklyFeed) { %>
+<!-- ================= MILK ================= -->
+<% if (item.type === 'milk') { %>
 
 <div class="feed-card system">
 
 <div class="feed-header">
 
 <div class="feed-user">
-<img src="https://ui-avatars.com/api/?name=System&background=198754&color=fff" class="avatar-sm">
+<img src="<%= item.userImage %>" class="avatar-sm">
 <div>
-<strong>System</strong>
-<small><%= weeklyFeed.weekEndText %></small>
+<strong><%= item.userName %></strong>
+<small><%= item.dateText %></small>
 </div>
 </div>
 
@@ -200,8 +204,8 @@ required
 
 <div class="feed-body">
 
-<strong>📊 Weekly Milking Summary</strong>
-<p><%= weeklyFeed.weekStart %> → <%= weeklyFeed.weekEnd %></p>
+<strong>📊 Weekly Milk Report</strong>
+<p><%= item.title %></p>
 
 <table class="weekly-table">
 <thead>
@@ -211,17 +215,19 @@ required
 </tr>
 </thead>
 <tbody>
-<% weeklyFeed.days.forEach(d => { %>
+
+<% item.days.forEach(d => { %>
 <tr>
 <td><%= d.day %></td>
 <td><%= d.total %> L</td>
 </tr>
 <% }) %>
+
 </tbody>
 </table>
 
 <div class="weekly-average">
-Average: <%= weeklyFeed.average %> L/day
+Average: <%= item.average %> L/day
 </div>
 
 </div>
@@ -231,31 +237,32 @@ Average: <%= weeklyFeed.average %> L/day
 <% } %>
 
 
-<!-- 🟥 MEDICAL SYSTEM POST -->
-<% if (dairy.medicalAttention && dairy.medicalAttention.isMarked) { %>
+<!-- ================= MEDICAL ================= -->
+<% if (item.type === 'medical') { %>
 
 <div class="feed-card medical">
 
 <div class="feed-header">
 
 <div class="feed-user">
-<img src="https://ui-avatars.com/api/?name=Medical&background=c62828&color=fff" class="avatar-sm">
+<img src="<%= item.userImage %>" class="avatar-sm">
 <div>
-<strong>Medical Alert</strong>
-<small><%= new Date(dairy.medicalAttention.markedAt).toLocaleString() %></small>
+<strong><%= item.title %></strong>
+<small><%= item.dateText %></small>
 </div>
 </div>
 
 </div>
 
 <div class="feed-body">
-<strong>🚨 <%= dairy.medicalAttention.type %></strong>
-<p><%= dairy.medicalAttention.details %></p>
+<p><%= item.details %></p>
 </div>
 
 </div>
 
 <% } %>
+
+<% }) %>
 
 </div>
 
