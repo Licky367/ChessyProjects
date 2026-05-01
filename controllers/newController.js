@@ -4,15 +4,21 @@ const newService = require("../services/newService");
 // SHOW FORM
 // =========================
 exports.showForm = (req, res) => {
-  res.render("new"); // views/new.ejs
+  res.render("new");
 };
 
 // =========================
-// CREATE NEW DAIRY RECORD
+// CREATE NEW RECORD
 // =========================
 exports.createRecord = async (req, res) => {
   try {
-    const { name, profileImage, dob, code, mass } = req.body;
+    const { name, dob, code, mass } = req.body;
+
+    // uploaded file path
+    let profileImage = "";
+    if (req.file) {
+      profileImage = "/uploads/" + req.file.filename;
+    }
 
     await newService.createDairyRecord({
       name,
@@ -22,7 +28,7 @@ exports.createRecord = async (req, res) => {
       mass
     });
 
-    res.redirect("/dairy/new"); // reload form after saving
+    res.redirect("/dairy/new");
   } catch (error) {
     console.error("Create Dairy Record Error:", error.message);
 
