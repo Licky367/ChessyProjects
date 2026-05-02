@@ -1,0 +1,48 @@
+<div class="page">
+
+  <div class="card">
+    <div class="section-title">Monthly Expenses</div>
+
+    <form class="filters" method="GET" action="/financials/expenses">
+      <input type="month" name="month" value="<%= month || '' %>">
+      <input type="number" name="year" placeholder="Year" value="<%= year || '' %>">
+      <button>Filter</button>
+    </form>
+
+    <% if (expenses && expenses.length > 0) { %>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Type</th>
+            <th>Description</th>
+            <th>Charges</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <% expenses.forEach(e => { %>
+            <tr>
+              <td><%= e.type %></td>
+              <td>
+                <%= e.type === 'maintenance'
+                  ? e.maintenance?.description
+                  : e.medical?.details %>
+              </td>
+              <td>KES <%= e.charges || 0 %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+
+      <div class="total">
+        Total Expenses: KES <%= totalExpenses || 0 %>
+      </div>
+
+    <% } else { %>
+      <p>No expenses found.</p>
+    <% } %>
+
+  </div>
+
+</div>
