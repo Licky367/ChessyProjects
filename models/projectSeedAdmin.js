@@ -1,40 +1,39 @@
 const mongoose = require("mongoose");
-const ProjectUser = require("./projectUser");
+const User = require("./projectUser");
 
 const MONGO_URI =
   process.env.MONGO_URI || "mongodb://127.0.0.1:27017/project_db";
 
-const projectSeedAdmin = async () => {
+const seedAdmin = async () => {
   try {
     await mongoose.connect(MONGO_URI);
     console.log("MongoDB connected...");
 
-    const adminEmail = "chessy415@gmail.com";
-
-    // Check if admin already exists
-    const existingAdmin = await ProjectUser.findOne({ email: adminEmail });
+    // 🔍 Check if ANY admin already exists (not by email)
+    const existingAdmin = await User.findOne({ role: "admin" });
 
     if (existingAdmin) {
-      console.log("Admin already exists");
-      process.exit();
+      console.log("Admin already exists:", existingAdmin.email);
+      process.exit(0);
     }
 
-    // Create admin (password will be hashed automatically)
-    const adminUser = await ProjectUser.create({
+    // 🆕 Create default admin only if none exists
+    const adminUser = await User.create({
       profileImage: "",
       name: "Project Admin",
       phone: "0700000000",
-      email: adminEmail,
+      email: "admin@corevester.com",
       password: "Admin@123",
       role: "admin",
     });
 
     console.log("Admin seeded successfully:", adminUser.email);
-    process.exit();
+    process.exit(0);
+
   } catch (error) {
     console.error("Error seeding admin:", error);
     process.exit(1);
   }
 };
 
-projectSeedAdmin();
+seedAdmin();
