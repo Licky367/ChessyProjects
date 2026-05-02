@@ -80,7 +80,7 @@ th{ background:#f8f9fa; }
 
 
   <!-- =========================
-       DAILY VIEW
+       MAIN VIEW
   ========================= -->
   <div class="card">
 
@@ -110,38 +110,28 @@ th{ background:#f8f9fa; }
 
 
       <!-- =========================
-           BACKEND-CONTROLLED SUMMARY
+           SUMMARY (READ ONLY)
       ========================= -->
       <div class="summary">
         <div class="box">Total Production: <b><%= stats.total %> L</b></div>
-        <div class="box">Consumed (Sales): <b><%= stats.consumed %> L</b></div>
+        <div class="box">Consumed: <b><%= stats.consumed %> L</b></div>
         <div class="box">Available: <b><%= stats.available %> L</b></div>
         <div class="box">Cash: <b>KES <%= stats.cash %></b></div>
-      </div>
 
+        <% if (stats.price !== undefined) { %>
+          <div class="box">Price: <b>KES <%= stats.price %>/L</b></div>
+        <% } %>
 
-      <!-- =========================
-           PRICE LOCK (ADMIN ONLY)
-      ========================= -->
-      <% if (user?.role === 'admin' && !stats.locked) { %>
-      <form method="POST" action="/milk/stats/day">
-
-        <input type="hidden" name="date" value="<%= date %>">
-
-        <div class="summary">
-          <div>
-            <label>Price per Liter (KES)</label>
-            <input type="number" step="0.1" name="price" required>
+        <% if (stats.locked) { %>
+          <div class="box" style="color:red;">
+            🔒 Locked
           </div>
-        </div>
-
-        <button class="primary">Lock Daily Financials</button>
-      </form>
-      <% } else if (stats.locked) { %>
-        <p style="color:red;margin-top:10px;">
-          Daily stats locked. No further edits allowed.
-        </p>
-      <% } %>
+        <% } else { %>
+          <div class="box" style="color:#888;">
+            Not Locked
+          </div>
+        <% } %>
+      </div>
 
     <% } %>
 
