@@ -42,9 +42,7 @@ exports.getDailyStats = async (day) => {
 /* =========================
    SAVE DAILY STATS
 ========================= */
-exports.saveDailyStats = async ({ date, consumed, price }) => {
-  const day = new Date(date).toISOString().split("T")[0];
-
+exports.saveDailyStats = async ({ day, consumed, price }) => {
   return Milk.saveDailyStats({
     day,
     consumed: Number(consumed) || 0,
@@ -54,7 +52,7 @@ exports.saveDailyStats = async ({ date, consumed, price }) => {
 
 
 /* =========================
-   GET CURRENT PRICE (🔥 NEW)
+   GET CURRENT PRICE
 ========================= */
 exports.getCurrentPrice = async () => {
   const latest = await Milk.findOne()
@@ -121,22 +119,21 @@ exports.getMonthlyStats = async (month) => {
 
 
 /* =========================
-   GET SALES PAGE DATA (FIXED)
+   GET SALES PAGE DATA
 ========================= */
 exports.getSalesPageData = async () => {
-  // 🔥 Only fetch latest doc (where standing orders live)
   const latest = await Milk.findOne()
     .sort({ createdAt: -1 })
     .lean();
 
-  const standingOrders = latest?.standingOrders || [];
-
-  return { standingOrders };
+  return {
+    standingOrders: latest?.standingOrders || []
+  };
 };
 
 
 /* =========================
-   PROCESS DAILY SALES (FIXED 🔥)
+   PROCESS DAILY SALES
 ========================= */
 exports.processDailySales = async ({ records, price, user }) => {
   const day = new Date().toISOString().split("T")[0];
@@ -150,7 +147,7 @@ exports.processDailySales = async ({ records, price, user }) => {
   }, 0);
 
 
-  /* 🔥 PRICE FALLBACK */
+  /* PRICE FALLBACK */
   let finalPrice = Number(price);
   if (!finalPrice) {
     finalPrice = await exports.getCurrentPrice();
@@ -164,11 +161,19 @@ exports.processDailySales = async ({ records, price, user }) => {
   }));
 
 
-  /* 🔥 ENSURE DOCUMENT EXISTS */
+  /* ENSURE DAILY DOC EXISTS */
   let doc = await Milk.findOne({ day });
 
   if (!doc) {
-    doc = await Milk.create({ day, sales: [] });
+    doc = await Milk.create({
+      day,
+      sales: [],
+      dailyStats: {
+        consumed: 0,
+        price: finalPrice,
+        locked: false
+      }
+    });
   }
 
 
@@ -208,7 +213,8 @@ exports.addStandingOrder = async ({ customerName, liters }) => {
     customerName,
     liters,
     effectiveDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
-    isActive: true
+    isActive: true,
+    omitted: false
   });
 
   return milkDoc.save();
