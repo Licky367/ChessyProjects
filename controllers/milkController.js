@@ -46,10 +46,12 @@ exports.getMilkStats = async (req, res) => {
   try {
     const { type = "day", date, month } = req.query;
 
+    let data = { records: [], stats: {} };
+
     if (type === "day") {
       const selectedDate = date || new Date().toISOString().split("T")[0];
 
-      const data = await milkService.getDailyStats(selectedDate);
+      data = await milkService.getDailyStats(selectedDate);
 
       return res.render("milkStats", {
         type,
@@ -63,7 +65,7 @@ exports.getMilkStats = async (req, res) => {
     if (type === "month") {
       const selectedMonth = month || new Date().toISOString().slice(0, 7);
 
-      const data = await milkService.getMonthlyStats(selectedMonth);
+      data = await milkService.getMonthlyStats(selectedMonth);
 
       return res.render("milkStats", {
         type,
@@ -96,8 +98,6 @@ exports.getMilkStats = async (req, res) => {
 exports.getSalesPage = async (req, res) => {
   try {
     const data = await milkService.getSalesPageData();
-
-    // 🔥 Use service instead of model directly
     const currentPrice = await milkService.getCurrentPrice();
 
     res.render("sales", {
