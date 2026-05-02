@@ -40,24 +40,30 @@ exports.submitMilk = async (req, res) => {
 
 
 /* =========================
-   GET STATS
+   GET STATS (CORE FIXED VERSION)
 ========================= */
 exports.getMilkStats = async (req, res) => {
   try {
     const { type = "day", date, month } = req.query;
 
-    let data = { records: [], stats: {} };
-
     if (type === "day") {
       const selectedDate = date || new Date().toISOString().split("T")[0];
 
-      data = await milkService.getDailyStats(selectedDate);
+      const data = await milkService.getDailyStats(selectedDate);
 
       return res.render("milkStats", {
         type,
         date: selectedDate,
+
+        // production
         records: data.records,
+
+        // totals (production + global revenue)
         stats: data.stats,
+
+        // per-customer sales breakdown
+        sales: data.sales || [],
+
         user: req.user
       });
     }
@@ -65,7 +71,7 @@ exports.getMilkStats = async (req, res) => {
     if (type === "month") {
       const selectedMonth = month || new Date().toISOString().slice(0, 7);
 
-      data = await milkService.getMonthlyStats(selectedMonth);
+      const data = await milkService.getMonthlyStats(selectedMonth);
 
       return res.render("milkStats", {
         type,
@@ -80,6 +86,7 @@ exports.getMilkStats = async (req, res) => {
       type,
       records: [],
       stats: {},
+      sales: [],
       user: req.user
     });
 
