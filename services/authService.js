@@ -1,7 +1,8 @@
+const crypto = require("crypto");
 const ProjectUser = require("../models/projectUser");
 const ProjectUserInvitation = require("../models/projectUserInvitation");
 
-// ===== SIGNUP =====
+// ================= SIGNUP =================
 exports.signup = async ({ name, email, password, phone, profileImage }) => {
 
   const existingUser = await ProjectUser.findOne({ email });
@@ -27,7 +28,7 @@ exports.signup = async ({ name, email, password, phone, profileImage }) => {
   return user;
 };
 
-// ===== LOGIN =====
+// ================= LOGIN =================
 exports.login = async ({ email, password }) => {
 
   const user = await ProjectUser.findOne({ email }).select("+password");
@@ -39,4 +40,43 @@ exports.login = async ({ email, password }) => {
   if (!isMatch) throw new Error("Invalid email or password");
 
   return user;
+};
+
+// ================= FORGOT PASSWORD =================
+exports.forgotPassword = async (email) => {
+
+  const user = await ProjectUser.findOne({ email });
+
+  if (!user) throw new Error("No account with that email");
+
+  const token = crypto.randomBytes(32).toString("hex");
+
+  user.resetToken = token;
+  user.resetTokenExpiry = Date.now() + 1000 * 60 * 15; // 15 minutes
+
+  await user.save();
+
+  const resetLink = `http://localhost:3000/reset-password/${token}`;
+  console.log("RESET LINK:", resetLink);
+
+  return resetLink;
+};
+
+// ================= RESET PASSWORD =================
+exports.resetPassword = async (token, newPassword) => {
+
+  const user = await ProjectUser.findOne({
+    resetToken: token,
+    resetTokenExpiry: { $gt: Date.now() },
+  });
+
+  if (!user) throw new Error("Invalid or expired token");
+
+  user.password = newPassword;
+  user.resetToken = undefined;
+  user.resetTokenExpiry = undefined;
+
+  await user.save();
+
+  return true;
 };
