@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 
-const projectUserSchema = new mongoose.Schema(
+const userSchema = new mongoose.Schema(
 {
   profileImage: {
     type: String,
-    default: "", // fallback handled on frontend
+    default: "",
   },
 
   name: {
@@ -20,6 +20,7 @@ const projectUserSchema = new mongoose.Schema(
     unique: true,
     lowercase: true,
     trim: true,
+    index: true,
   },
 
   phone: {
@@ -29,9 +30,9 @@ const projectUserSchema = new mongoose.Schema(
 
   password: {
     type: String,
+    required: [true, "Password is required"],
     minlength: 6,
     select: false,
-    required: true,
   },
 
   role: {
@@ -40,25 +41,37 @@ const projectUserSchema = new mongoose.Schema(
     default: "dairyWorker",
   },
 
+  // 🔐 Password reset support
+  resetToken: {
+    type: String,
+    default: null,
+  },
+
+  resetTokenExpiry: {
+    type: Date,
+    default: null,
+  },
+
 },
 {
   timestamps: true,
-  collection: "project-Users",
+  collection: "project-Users", // keeps your existing collection
 }
 );
 
-// 🔐 Hash password
-projectUserSchema.pre("save", async function (next) {
+// ================= HASH PASSWORD =================
+userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+
   next();
 });
 
-// 🔐 Compare password
-projectUserSchema.methods.comparePassword = async function (candidatePassword) {
+// ================= COMPARE PASSWORD =================
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-module.exports = mongoose.model("User", projectUserSchema);
+module.exports = mongoose.model("User", userSchema);
