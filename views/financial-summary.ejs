@@ -1,0 +1,48 @@
+<div class="page">
+
+  <div class="card">
+    <div class="section-title">Financial Summary</div>
+
+    <form class="filters" method="GET" action="/financials/summary">
+      <input type="month" name="month" value="<%= month || '' %>">
+      <input type="number" name="year" placeholder="Year" value="<%= year || '' %>">
+      <button>Generate</button>
+    </form>
+
+    <!-- SELECTED PERIOD DISPLAY -->
+    <p style="margin-bottom:10px;">
+      Showing results for:
+      <strong><%= month || 'All Months' %> / <%= year || 'All Years' %></strong>
+    </p>
+
+    <div class="summary">
+
+      <div class="box">
+        <h3>Milk Income</h3>
+        <p>KES <%= financial?.milkCash || 0 %></p>
+      </div>
+
+      <div class="box">
+        <h3>Maintenance</h3>
+        <p>KES <%= financial?.maintenanceCost || 0 %></p>
+      </div>
+
+      <div class="box">
+        <h3>Medical</h3>
+        <p>KES <%= financial?.medicalCost || 0 %></p>
+      </div>
+
+      <div class="box">
+        <h3>Total Expenses</h3>
+        <p>KES <%= financial?.totalExpenses || 0 %></p>
+      </div>
+
+      <div class="box">
+        <h3>Profit</h3>
+        <p>KES <%= financial?.profit || 0 %></p>
+      </div>
+
+    </div>
+
+  </div>
+</div>
