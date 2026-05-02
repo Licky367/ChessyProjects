@@ -22,7 +22,7 @@ exports.saveMilkRecords = async (records, userId) => {
 
   const docs = records.map(r => ({
     dairy: r.dairy,
-    liters: Number(r.liters),
+    liters: Number(r.liters) || 0,
     remarks: r.remarks || "",
     recordedBy: userId
   }));
@@ -32,7 +32,7 @@ exports.saveMilkRecords = async (records, userId) => {
 
 
 /* =========================
-   DAILY STATS (MODEL DRIVEN)
+   DAILY STATS
 ========================= */
 exports.getDailyStats = async (day) => {
   return Milk.getDailyReport(day);
@@ -40,21 +40,33 @@ exports.getDailyStats = async (day) => {
 
 
 /* =========================
-   SAVE DAILY STATS (LOCKED)
+   SAVE DAILY STATS
 ========================= */
 exports.saveDailyStats = async ({ date, consumed, price }) => {
   const day = new Date(date).toISOString().split("T")[0];
 
   return Milk.saveDailyStats({
     day,
-    consumed,
-    price
+    consumed: Number(consumed) || 0,
+    price: Number(price) || 0
   });
 };
 
 
 /* =========================
-   MONTHLY STATS (FIXED CASH)
+   GET CURRENT PRICE (🔥 NEW)
+========================= */
+exports.getCurrentPrice = async () => {
+  const latest = await Milk.findOne()
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return latest?.dailyStats?.price || 0;
+};
+
+
+/* =========================
+   MONTHLY STATS
 ========================= */
 exports.getMonthlyStats = async (month) => {
   const records = await Milk.getMonthlyReport(month);
@@ -73,9 +85,7 @@ exports.getMonthlyStats = async (month) => {
   }));
 
 
-  /* =========================
-     CASH LOGIC
-  ========================= */
+  /* CASH LOGIC */
   const cashAgg = await Milk.aggregate([
     { $match: { month } },
     {
@@ -111,38 +121,27 @@ exports.getMonthlyStats = async (month) => {
 
 
 /* =========================
-   SALES ENGINE CORE
+   GET SALES PAGE DATA (FIXED)
 ========================= */
-
-/* GET SALES PAGE DATA */
 exports.getSalesPageData = async () => {
-  const data = await Milk.find({}).lean();
+  // 🔥 Only fetch latest doc (where standing orders live)
+  const latest = await Milk.findOne()
+    .sort({ createdAt: -1 })
+    .lean();
 
-  const standingOrders = [];
-
-  data.forEach(d => {
-    if (d.standingOrders?.length) {
-      d.standingOrders.forEach(o => {
-        standingOrders.push({
-          ...o,
-          milkId: d._id
-        });
-      });
-    }
-  });
+  const standingOrders = latest?.standingOrders || [];
 
   return { standingOrders };
 };
 
 
 /* =========================
-   PROCESS DAILY SALES (UPDATED)
-   🔥 NOW STORES PER-CUSTOMER SALES
+   PROCESS DAILY SALES (FIXED 🔥)
 ========================= */
 exports.processDailySales = async ({ records, price, user }) => {
   const day = new Date().toISOString().split("T")[0];
 
-  if (!records || !records.length) return { day };
+  if (!records || !records.length) return { date: day };
 
   const validRecords = records.filter(r => r.customerName && r.liters);
 
@@ -150,18 +149,32 @@ exports.processDailySales = async ({ records, price, user }) => {
     return sum + Number(r.liters || 0);
   }, 0);
 
+
+  /* 🔥 PRICE FALLBACK */
+  let finalPrice = Number(price);
+  if (!finalPrice) {
+    finalPrice = await exports.getCurrentPrice();
+  }
+
+
   const sales = validRecords.map(r => ({
     customerName: r.customerName,
     liters: Number(r.liters),
-    cash: Number(r.liters) * Number(price)
+    cash: Number(r.liters) * finalPrice
   }));
 
 
-  /* =========================
-     STORE CUSTOMER SALES
-  ========================= */
-  await Milk.updateMany(
-    { day },
+  /* 🔥 ENSURE DOCUMENT EXISTS */
+  let doc = await Milk.findOne({ day });
+
+  if (!doc) {
+    doc = await Milk.create({ day, sales: [] });
+  }
+
+
+  /* STORE SALES */
+  await Milk.updateOne(
+    { _id: doc._id },
     {
       $push: {
         sales: { $each: sales }
@@ -170,13 +183,11 @@ exports.processDailySales = async ({ records, price, user }) => {
   );
 
 
-  /* =========================
-     UPDATE DAILY STATS
-  ========================= */
+  /* UPDATE DAILY STATS */
   await Milk.saveDailyStats({
     day,
     consumed,
-    price
+    price: finalPrice
   });
 
   return { date: day };
@@ -196,7 +207,8 @@ exports.addStandingOrder = async ({ customerName, liters }) => {
   milkDoc.standingOrders.push({
     customerName,
     liters,
-    effectiveDate: new Date(Date.now() + 24 * 60 * 60 * 1000)
+    effectiveDate: new Date(Date.now() + 24 * 60 * 60 * 1000),
+    isActive: true
   });
 
   return milkDoc.save();
@@ -224,7 +236,7 @@ exports.omitStandingOrder = async ({ orderId, user }) => {
 
 
 /* =========================
-   MILKING HISTORY (PER ANIMAL)
+   MILKING HISTORY
 ========================= */
 exports.getMilkingHistory = async ({ dairyId, month }) => {
 
@@ -239,7 +251,6 @@ exports.getMilkingHistory = async ({ dairyId, month }) => {
     .sort({ date: 1 })
     .lean();
 
-
   const grouped = {};
 
   records.forEach(r => {
@@ -253,7 +264,6 @@ exports.getMilkingHistory = async ({ dairyId, month }) => {
     grouped[r.day].entries.push(r);
     grouped[r.day].total += r.liters;
   });
-
 
   const monthlyTotal = records.reduce((sum, r) => sum + r.liters, 0);
 
