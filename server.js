@@ -114,7 +114,7 @@ app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
 app.use("/", milkRoutes);
-app.use("/", financialsRoutes);
+app.use("/financials", financialsRoutes);
 app.use("/dairy", newRoutes);
 
 // ======================
