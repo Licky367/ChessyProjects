@@ -11,7 +11,7 @@ exports.getMilkingAnimals = async () => {
 
 
 /* =========================
-   SAVE MILK RECORDS
+   SAVE MILK RECORDS (PRODUCTION)
 ========================= */
 exports.saveMilkRecords = async (records, userId) => {
   if (!records || !records.length) return;
@@ -32,15 +32,15 @@ exports.saveMilkRecords = async (records, userId) => {
 
 
 /* =========================
-   DAILY STATS (READ SAFE)
+   DAILY STATS (READ ONLY)
+   - production summary
+   - global revenue ONLY
 ========================= */
 exports.getDailyStats = async (day) => {
   const data = await Milk.getDailyReport(day);
 
   return {
     records: data.records || [],
-
-    // production stats
     stats: {
       total: data.stats?.total || 0,
       consumed: data.stats?.consumed || 0,
@@ -48,18 +48,18 @@ exports.getDailyStats = async (day) => {
       price: data.stats?.price || 0,
       locked: data.stats?.locked || false,
 
-      // GLOBAL revenue ONLY (derived from sales)
+      // 🔵 GLOBAL REVENUE (ONLY SOURCE)
       cash: data.stats?.cash || 0
     },
 
-    // per-customer breakdown (IMPORTANT)
-    sales: data.records?.flatMap(r => r.sales || []) || []
+    // 🟡 PER CUSTOMER SALES (IMPORTANT FOR UI)
+    sales: (data.records || []).flatMap(r => r.sales || [])
   };
 };
 
 
 /* =========================
-   SAVE DAILY STATS
+   SAVE DAILY STATS (LOCK SNAPSHOT)
 ========================= */
 exports.saveDailyStats = async ({ day, consumed, price }) => {
   return Milk.saveDailyStats({
@@ -83,51 +83,25 @@ exports.getCurrentPrice = async () => {
 
 
 /* =========================
-   MONTHLY STATS (CLEAN + SAFE)
+   MONTHLY STATS
 ========================= */
 exports.getMonthlyStats = async (month) => {
-  const records = await Milk.getMonthlyReport(month);
+  const data = await Milk.getMonthlyReport(month);
 
-  const dairyIds = records?.records?.map(r => r.dairy) || [];
+  const dairyIds = data.records.map(r => r.dairy);
 
-  const dairies = await Dairy.find({
-    _id: { $in: dairyIds }
-  });
+  const dairies = await Dairy.find({ _id: { $in: dairyIds } });
 
   const map = {};
   dairies.forEach(d => (map[d._id] = d));
 
-  const formatted = (records.records || []).map(r => ({
+  const formatted = data.records.map(r => ({
     dairy: map[r.dairy] || null,
     total: r.total || 0,
     avg: r.avg || 0
   }));
 
-
-  /* =========================
-     GLOBAL REVENUE (FROM SALES ONLY)
-  ========================= */
-  const cashAgg = await Milk.aggregate([
-    { $match: { month } },
-
-    {
-      $unwind: {
-        path: "$sales",
-        preserveNullAndEmptyArrays: true
-      }
-    },
-
-    {
-      $group: {
-        _id: null,
-        totalCash: { $sum: "$sales.cash" }
-      }
-    }
-  ]);
-
-  const totalCash = cashAgg?.[0]?.totalCash || 0;
-
-  const total = formatted.reduce((sum, r) => sum + r.total, 0);
+  const total = formatted.reduce((s, r) => s + r.total, 0);
   const avg = formatted.length ? total / formatted.length : 0;
 
   return {
@@ -135,7 +109,9 @@ exports.getMonthlyStats = async (month) => {
     stats: {
       total,
       avg,
-      cash: totalCash
+
+      // 🔵 GLOBAL REVENUE
+      cash: data.stats?.cash || 0
     }
   };
 };
@@ -145,9 +121,7 @@ exports.getMonthlyStats = async (month) => {
    SALES PAGE DATA
 ========================= */
 exports.getSalesPageData = async () => {
-  const latest = await Milk.findOne()
-    .sort({ createdAt: -1 })
-    .lean();
+  const latest = await Milk.findOne().sort({ createdAt: -1 }).lean();
 
   return {
     standingOrders: latest?.standingOrders || []
@@ -156,40 +130,30 @@ exports.getSalesPageData = async () => {
 
 
 /* =========================
-   PROCESS DAILY SALES (CORE FIXED)
+   PROCESS DAILY SALES
+   - stores per customer sales
+   - calculates global revenue properly
 ========================= */
-exports.processDailySales = async ({ records, price, user }) => {
+exports.processDailySales = async ({ records, price }) => {
   const day = new Date().toISOString().split("T")[0];
 
   if (!records || !records.length) return { date: day };
 
-  const validRecords = records.filter(
-    r => r.customerName && r.liters
-  );
+  const valid = records.filter(r => r.customerName && r.liters);
 
-  /* =========================
-     PRICE HANDLING
-  ========================= */
   let finalPrice = Number(price);
-
-  if (!finalPrice) {
-    finalPrice = await exports.getCurrentPrice();
-  }
+  if (!finalPrice) finalPrice = await exports.getCurrentPrice();
 
   /* =========================
-     BUILD SALES ENTRIES
+     BUILD SALES (PER CUSTOMER)
   ========================= */
-  const sales = validRecords.map(r => ({
+  const sales = valid.map(r => ({
     customerName: r.customerName,
     liters: Number(r.liters),
     cash: Number(r.liters) * finalPrice,
     createdAt: new Date()
   }));
 
-
-  /* =========================
-     GET OR CREATE DAILY DOC
-  ========================= */
   let doc = await Milk.findOne({ day });
 
   if (!doc) {
@@ -199,60 +163,49 @@ exports.processDailySales = async ({ records, price, user }) => {
       dailyStats: {
         consumed: 0,
         price: finalPrice,
-        locked: false,
-        cash: 0
+        cash: 0,
+        locked: false
       }
     });
   }
-
 
   /* =========================
      APPEND SALES
   ========================= */
   await Milk.updateOne(
     { _id: doc._id },
-    {
-      $push: {
-        sales: { $each: sales }
-      }
-    }
+    { $push: { sales: { $each: sales } } }
   );
 
-
   /* =========================
-     RELOAD DOC (TRUTH SOURCE)
+     RECALCULATE TOTALS
   ========================= */
-  const updatedDoc = await Milk.findById(doc._id).lean();
+  const updated = await Milk.findById(doc._id).lean();
 
-
-  /* =========================
-     TOTAL CONSUMED
-  ========================= */
-  const totalConsumed = (updatedDoc.sales || []).reduce(
-    (sum, s) => sum + Number(s.liters || 0),
+  const totalConsumed = (updated.sales || []).reduce(
+    (s, r) => s + (r.liters || 0),
     0
   );
 
-
-  /* =========================
-     GLOBAL REVENUE (FROM SALES ONLY)
-  ========================= */
-  const totalCash = (updatedDoc.sales || []).reduce(
-    (sum, s) => sum + Number(s.cash || 0),
+  const globalCash = (updated.sales || []).reduce(
+    (s, r) => s + (r.cash || 0),
     0
   );
 
-
   /* =========================
-     UPDATE DAILY STATS
+     SAVE DAILY STATS (SOURCE OF TRUTH)
   ========================= */
+  await Milk.saveDailyStats({
+    day,
+    consumed: totalConsumed,
+    price: finalPrice
+  });
+
   await Milk.updateOne(
     { _id: doc._id },
     {
       $set: {
-        "dailyStats.consumed": totalConsumed,
-        "dailyStats.price": finalPrice,
-        "dailyStats.cash": totalCash
+        "dailyStats.cash": globalCash
       }
     }
   );
@@ -267,9 +220,7 @@ exports.processDailySales = async ({ records, price, user }) => {
 exports.addStandingOrder = async ({ customerName, liters }) => {
   const milkDoc = await Milk.findOne().sort({ createdAt: -1 });
 
-  if (!milkDoc) {
-    throw new Error("No milk document found");
-  }
+  if (!milkDoc) throw new Error("No milk document found");
 
   milkDoc.standingOrders.push({
     customerName,
@@ -307,9 +258,7 @@ exports.omitStandingOrder = async ({ orderId, user }) => {
    MILKING HISTORY
 ========================= */
 exports.getMilkingHistory = async ({ dairyId, month }) => {
-
   const filter = { dairy: dairyId };
-
   if (month) filter.month = month;
 
   const records = await Milk.find(filter)
@@ -321,17 +270,14 @@ exports.getMilkingHistory = async ({ dairyId, month }) => {
 
   records.forEach(r => {
     if (!grouped[r.day]) {
-      grouped[r.day] = {
-        entries: [],
-        total: 0
-      };
+      grouped[r.day] = { entries: [], total: 0 };
     }
 
     grouped[r.day].entries.push(r);
     grouped[r.day].total += r.liters;
   });
 
-  const monthlyTotal = records.reduce((sum, r) => sum + r.liters, 0);
+  const monthlyTotal = records.reduce((s, r) => s + r.liters, 0);
 
   return {
     grouped,
