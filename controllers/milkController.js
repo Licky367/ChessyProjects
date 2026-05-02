@@ -1,5 +1,4 @@
 const milkService = require("../services/milkService");
-const Milk = require("../models/milk");
 
 
 /* =========================
@@ -90,27 +89,6 @@ exports.getMilkStats = async (req, res) => {
 
 
 /* =========================
-   SAVE DAILY STATS (LOCK SYSTEM)
-========================= */
-exports.saveDailyStats = async (req, res) => {
-  try {
-    const { date, price } = req.body;
-
-    await milkService.saveDailyStats({
-      date,
-      price: Number(price)
-    });
-
-    res.redirect(`/milk/stats?type=day&date=${date}`);
-
-  } catch (err) {
-    console.error(err);
-    res.status(500).send(err.message);
-  }
-};
-
-
-/* =========================
    SALES SYSTEM
 ========================= */
 
@@ -119,12 +97,8 @@ exports.getSalesPage = async (req, res) => {
   try {
     const data = await milkService.getSalesPageData();
 
-    // Get latest price (persistent behavior)
-    const latest = await Milk.findOne()
-      .sort({ createdAt: -1 })
-      .lean();
-
-    const currentPrice = latest?.dailyStats?.price || "";
+    // 🔥 Use service instead of model directly
+    const currentPrice = await milkService.getCurrentPrice();
 
     res.render("sales", {
       standingOrders: data.standingOrders,
