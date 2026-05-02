@@ -1,176 +1,139 @@
-<style>
-.page{max-width:1100px;margin:auto;}
-.card{background:#fff;padding:25px;border-radius:14px;box-shadow:0 8px 20px rgba(0,0,0,.05);margin-bottom:20px;}
-
-h2{margin-bottom:15px;}
-h3{margin:10px 0;}
-
-form{margin-bottom:10px;}
-
-input{
-  width:100%;
-  padding:8px;
-  border-radius:6px;
-  border:1px solid #ddd;
-}
-
-button{
-  background:#0b5d1e;
-  color:white;
-  padding:10px 15px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  margin-top:10px;
-}
-
-.row{display:flex;gap:10px;flex-wrap:wrap;}
-.col{flex:1;min-width:150px;}
-
-table{width:100%;border-collapse:collapse;margin-top:10px;}
-th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
-th{background:#f8f9fa;}
-
-.total-box{
-  margin-top:15px;
-  padding:12px;
-  background:#f8f9fa;
-  border-radius:10px;
-  font-weight:bold;
-}
-
-.empty{text-align:center;padding:20px;color:#888;}
-
-/* 🔥 FUTURE ORDERS STYLE */
-.future{
-  color:#aaa;
-  font-style:italic;
-}
-
-.omit-btn{
-  background:#dc3545;
-  margin-left:10px;
-}
-</style>
-
-
 <div class="page">
 
   <!-- =========================
-       STANDING ORDERS
+       SALES FORM (MASTER FORM)
   ========================= -->
-  <div class="card">
-    <h2>Standing Orders (Daily Supply Contracts)</h2>
+  <form method="POST" action="/sales">
 
-    <form method="POST" action="/sales/standing">
+    <!-- =========================
+         PRICE SECTION (TOP)
+    ========================= -->
+    <div class="card">
+      <h2>Milk Price (KES per Liter)</h2>
+
       <div class="row">
         <div class="col">
-          <label>Customer Name</label>
-          <input type="text" name="customerName" required>
-        </div>
+          <label>Current Price</label>
 
-        <div class="col">
-          <label>Liters Per Day</label>
-          <input type="number" step="0.1" min="0" name="liters" required>
+          <input 
+            type="number" 
+            step="0.1" 
+            name="price"
+            value="<%= currentPrice || '' %>"
+            <%= user?.role !== 'admin' ? 'readonly' : 'required' %>
+          >
         </div>
       </div>
 
-      <button>Add Standing Order</button>
-    </form>
+      <% if (user?.role !== 'admin') { %>
+        <small style="color:#888;">Only admins can update price</small>
+      <% } %>
+    </div>
 
 
-    <% if (standingOrders && standingOrders.length > 0) { %>
+    <!-- =========================
+         STANDING ORDERS
+    ========================= -->
+    <div class="card">
+      <h2>Standing Orders (Daily Supply Contracts)</h2>
+
+      <!-- ADD FORM -->
+      <form method="POST" action="/sales/standing">
+        <div class="row">
+          <div class="col">
+            <label>Customer Name</label>
+            <input type="text" name="customerName" required>
+          </div>
+
+          <div class="col">
+            <label>Liters Per Day</label>
+            <input type="number" step="0.1" min="0" name="liters" required>
+          </div>
+        </div>
+
+        <button>Add Standing Order</button>
+      </form>
+
+      <!-- TABLE -->
+      <% if (standingOrders && standingOrders.length > 0) { %>
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Liters</th>
+              <th>Status</th>
+              <% if (user?.role === 'admin') { %>
+                <th>Action</th>
+              <% } %>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% let index = 0; %>
+
+            <% standingOrders.forEach(o => { %>
+              <tr class="<%= o.isFuture ? 'future' : '' %>">
+
+                <td>
+                  <%= o.customerName %>
+
+                  <!-- 🔥 Include ONLY active in submission -->
+                  <% if (!o.isFuture) { %>
+                    <input type="hidden" name="records[<%= index %>][customerName]" value="<%= o.customerName %>">
+                  <% } %>
+                </td>
+
+                <td>
+                  <%= o.liters %>
+
+                  <% if (!o.isFuture) { %>
+                    <input type="hidden" name="records[<%= index %>][liters]" value="<%= o.liters %>">
+                  <% } %>
+                </td>
+
+                <td>
+                  <%= o.isFuture ? 'Effective Tomorrow' : 'Active' %>
+                </td>
+
+                <% if (user?.role === 'admin') { %>
+                  <td>
+                    <form method="POST" action="/sales/standing/omit">
+                      <input type="hidden" name="id" value="<%= o._id %>">
+                      <button class="omit-btn">Omit</button>
+                    </form>
+                  </td>
+                <% } %>
+
+              </tr>
+
+              <% if (!o.isFuture) index++; %>
+            <% }) %>
+
+          </tbody>
+        </table>
+      <% } else { %>
+        <div class="empty">No standing orders yet.</div>
+      <% } %>
+
+    </div>
+
+
+    <!-- =========================
+         MANUAL ORDERS INPUT
+    ========================= -->
+    <div class="card">
+      <h2>Manual Orders</h2>
+
       <table>
         <thead>
           <tr>
             <th>Customer</th>
             <th>Liters</th>
-            <th>Status</th>
-            <% if (user?.role === 'admin') { %>
-              <th>Action</th>
-            <% } %>
-          </tr>
-        </thead>
-
-        <tbody>
-          <% standingOrders.forEach(o => { %>
-            <tr class="<%= o.isFuture ? 'future' : '' %>">
-
-              <td><%= o.customerName %></td>
-
-              <td><%= o.liters %></td>
-
-              <td>
-                <% if (o.isFuture) { %>
-                  Effective Tomorrow
-                <% } else { %>
-                  Active
-                <% } %>
-              </td>
-
-              <% if (user?.role === 'admin') { %>
-                <td>
-                  <form method="POST" action="/sales/standing/omit">
-                    <input type="hidden" name="id" value="<%= o._id %>">
-                    <button class="omit-btn">Omit</button>
-                  </form>
-                </td>
-              <% } %>
-
-            </tr>
-          <% }) %>
-        </tbody>
-      </table>
-    <% } else { %>
-      <div class="empty">No standing orders yet.</div>
-    <% } %>
-
-  </div>
-
-
-  <!-- =========================
-       DAILY SALES
-  ========================= -->
-  <div class="card">
-
-    <h2>Daily Milk Sales</h2>
-
-    <form method="POST" action="/sales">
-
-      <table>
-        <thead>
-          <tr>
-            <th>Customer</th>
-            <th>Liters Sold</th>
           </tr>
         </thead>
 
         <tbody>
 
-          <!-- 🔥 ACTIVE STANDING ORDERS ONLY -->
-          <% let index = 0; %>
-
-          <% if (standingOrders && standingOrders.length > 0) { %>
-
-            <% standingOrders.filter(o => !o.isFuture).forEach(o => { %>
-              <tr>
-                <td>
-                  <%= o.customerName %>
-                  <input type="hidden" name="records[<%= index %>][customerName]" value="<%= o.customerName %>">
-                </td>
-
-                <td>
-                  <%= o.liters %>
-                  <input type="hidden" name="records[<%= index %>][liters]" value="<%= o.liters %>">
-                </td>
-              </tr>
-
-              <% index++; %>
-            <% }) %>
-
-          <% } %>
-
-          <!-- 🔥 MANUAL ENTRIES -->
           <% for(let i = 0; i < 5; i++) { %>
             <tr>
               <td>
@@ -196,29 +159,26 @@ th{background:#f8f9fa;}
         </tbody>
       </table>
 
-
-      <!-- 🔥 PRICE INPUT (ADMIN ONLY) -->
-      <% if (user?.role === 'admin') { %>
-        <div class="row" style="margin-top:15px;">
-          <div class="col">
-            <label>Price Per Liter (KES)</label>
-            <input type="number" step="0.1" name="price" required>
-          </div>
-        </div>
-      <% } %>
-
-      <button>Submit Daily Sales</button>
-
-    </form>
+    </div>
 
 
-    <!-- TOTAL -->
-    <% if (totalSales !== undefined) { %>
-      <div class="total-box">
-        Total Sold Today: <%= totalSales %> Liters
-      </div>
-    <% } %>
+    <!-- =========================
+         SUBMIT BUTTON
+    ========================= -->
+    <div class="card">
+      <button style="width:100%;">Submit Daily Sales</button>
+    </div>
 
-  </div>
+  </form>
+
+
+  <!-- =========================
+       TOTAL DISPLAY
+  ========================= -->
+  <% if (totalSales !== undefined) { %>
+    <div class="card total-box">
+      Total Sold Today: <%= totalSales %> Liters
+    </div>
+  <% } %>
 
 </div>
