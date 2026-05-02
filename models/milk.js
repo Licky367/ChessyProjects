@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 
 /* =========================
    SALES SUB-SCHEMA
+   (SOURCE OF REVENUE)
 ========================= */
 const salesSchema = new mongoose.Schema(
   {
@@ -21,6 +22,11 @@ const salesSchema = new mongoose.Schema(
     cash: {
       type: Number,
       required: true
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now
     }
   },
   { _id: false }
@@ -57,7 +63,7 @@ const standingOrderSchema = new mongoose.Schema(
 const milkSchema = new mongoose.Schema(
   {
     /* =========================
-       RELATION TO DAIRY
+       RELATIONS
     ========================= */
     dairy: {
       type: mongoose.Schema.Types.ObjectId,
@@ -73,8 +79,9 @@ const milkSchema = new mongoose.Schema(
       index: true
     },
 
+
     /* =========================
-       MILK DATA
+       PRODUCTION DATA
     ========================= */
     liters: {
       type: Number,
@@ -94,28 +101,32 @@ const milkSchema = new mongoose.Schema(
       index: true
     },
 
+
     /* =========================
        DATE KEYS
     ========================= */
-    day: { type: String, index: true },    // YYYY-MM-DD
-    month: { type: String, index: true },  // YYYY-MM
+    day: { type: String, index: true },   // YYYY-MM-DD
+    month: { type: String, index: true }, // YYYY-MM
 
 
     /* =========================
-       DAILY STATS (FINANCIAL SUMMARY)
-       ⚠️ DO NOT USE FOR SALES SOURCE
+       DAILY STATS (SNAPSHOT ONLY)
+       ⚠ NOT SOURCE OF TRUTH FOR REVENUE
     ========================= */
     dailyStats: {
       consumed: { type: Number, default: 0 },
       available: { type: Number, default: 0 },
       price: { type: Number, default: 0 },
+
+      // 🔴 LEGACY ONLY (DO NOT AGGREGATE FROM THIS)
       cash: { type: Number, default: 0 },
+
       locked: { type: Boolean, default: false }
     },
 
 
     /* =========================
-       SALES RECORDS (DAILY)
+       SALES (SOURCE OF TRUTH)
     ========================= */
     sales: [salesSchema],
 
@@ -160,7 +171,7 @@ milkSchema.methods.getActiveStandingOrders = function () {
 
 
 /* =========================
-   OMIt ORDER (STATIC SAFE)
+   OMIT ORDER
 ========================= */
 milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
   return this.updateOne(
@@ -177,7 +188,7 @@ milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
 
 /* =========================
    SAVE DAILY STATS
-   ⚠️ USED ONLY FOR SUMMARY SNAPSHOT
+   (PRODUCTION SNAPSHOT ONLY)
 ========================= */
 milkSchema.statics.saveDailyStats = async function ({
   day,
@@ -197,7 +208,6 @@ milkSchema.statics.saveDailyStats = async function ({
   const total = agg[0]?.total || 0;
 
   const available = total - consumed;
-  const cash = consumed * price;
 
   return this.updateMany(
     { day },
@@ -206,7 +216,9 @@ milkSchema.statics.saveDailyStats = async function ({
         "dailyStats.consumed": consumed,
         "dailyStats.available": available,
         "dailyStats.price": price,
-        "dailyStats.cash": cash
+
+        // ⚠ DO NOT RELY ON THIS FOR REPORTING
+        "dailyStats.cash": consumed * price
       }
     }
   );
@@ -214,7 +226,7 @@ milkSchema.statics.saveDailyStats = async function ({
 
 
 /* =========================
-   DAILY REPORT (FIXED RELIABILITY)
+   DAILY REPORT (SOURCE OF TRUTH)
 ========================= */
 milkSchema.statics.getDailyReport = async function (day) {
   const records = await this.find({ day })
@@ -222,26 +234,34 @@ milkSchema.statics.getDailyReport = async function (day) {
     .populate("recordedBy", "name")
     .lean();
 
-  const total = records.reduce((sum, r) => sum + r.liters, 0);
+  const total = records.reduce((s, r) => s + r.liters, 0);
 
-  // safer aggregation from first available stats snapshot
   const stats = records.find(r => r.dailyStats)?.dailyStats || {};
+
+  // 🔥 IMPORTANT: derive cash from sales, NOT dailyStats
+  const sales = records.flatMap(r => r.sales || []);
+
+  const cash = sales.reduce((s, r) => s + (r.cash || 0), 0);
 
   return {
     records,
+    sales,
     stats: {
       total,
       consumed: stats.consumed || 0,
       available: stats.available || total,
-      cash: stats.cash || 0,
-      locked: stats.locked || false
+      price: stats.price || 0,
+      locked: stats.locked || false,
+
+      // 🔵 GLOBAL REVENUE (REAL SOURCE)
+      cash
     }
   };
 };
 
 
 /* =========================
-   MONTHLY REPORT (FIXED CASH RELIABILITY)
+   MONTHLY REPORT
 ========================= */
 milkSchema.statics.getMonthlyReport = async function (month) {
 
@@ -267,16 +287,15 @@ milkSchema.statics.getMonthlyReport = async function (month) {
 
   const cashAgg = await this.aggregate([
     { $match: { month } },
+
     {
-      $group: {
-        _id: "$day",
-        cash: { $first: "$dailyStats.cash" }
-      }
+      $unwind: "$sales"
     },
+
     {
       $group: {
         _id: null,
-        totalCash: { $sum: "$cash" }
+        totalCash: { $sum: "$sales.cash" }
       }
     }
   ]);
