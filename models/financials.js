@@ -6,9 +6,6 @@ const mongoose = require("mongoose");
 ========================= */
 const financialSchema = new mongoose.Schema({
 
-  /* =========================
-     PERIOD CONTROL
-  ========================= */
   periodType: {
     type: String,
     enum: ["daily", "monthly", "yearly"],
@@ -16,57 +13,20 @@ const financialSchema = new mongoose.Schema({
     index: true
   },
 
-  day: { type: String, index: true },     // YYYY-MM-DD
-  month: { type: String, index: true },   // YYYY-MM
+  day: { type: String, index: true },
+  month: { type: String, index: true },
   year: { type: Number, index: true },
 
+  milkCash: { type: Number, default: 0 },
 
-  /* =========================
-     CASH INFLOW (MILK REVENUE)
-     - from Milk.sales + dailyStats.cash
-  ========================= */
-  milkCash: {
-    type: Number,
-    default: 0
-  },
+  maintenanceCost: { type: Number, default: 0 },
+  medicalCost: { type: Number, default: 0 },
 
+  totalExpenses: { type: Number, default: 0 },
 
-  /* =========================
-     CASH OUTFLOW (EXPENSES)
-     - from Update model
-  ========================= */
-  maintenanceCost: {
-    type: Number,
-    default: 0
-  },
+  profit: { type: Number, default: 0 },
 
-  medicalCost: {
-    type: Number,
-    default: 0
-  },
-
-  totalExpenses: {
-    type: Number,
-    default: 0
-  },
-
-
-  /* =========================
-     PROFIT
-  ========================= */
-  profit: {
-    type: Number,
-    default: 0
-  },
-
-
-  /* =========================
-     LOCK SYSTEM
-  ========================= */
-  locked: {
-    type: Boolean,
-    default: false
-  }
+  locked: { type: Boolean, default: false }
 
 }, {
   timestamps: true
@@ -74,115 +34,91 @@ const financialSchema = new mongoose.Schema({
 
 
 /* =========================
-   INDEXES (ANTI-DUPLICATION SAFETY)
+   CORE CALCULATION HELPER
 ========================= */
-financialSchema.index(
-  { periodType: 1, day: 1 },
-  { unique: true, sparse: true }
-);
+financialSchema.statics._calculate = function (data) {
+  const totalExpenses =
+    (data.maintenanceCost || 0) +
+    (data.medicalCost || 0);
 
-financialSchema.index(
-  { periodType: 1, month: 1 },
-  { unique: true, sparse: true }
-);
+  const profit =
+    (data.milkCash || 0) - totalExpenses;
 
-financialSchema.index(
-  { periodType: 1, year: 1 },
-  { unique: true, sparse: true }
-);
+  return {
+    ...data,
+    totalExpenses,
+    profit,
+    locked: true
+  };
+};
 
 
 /* =========================
-   STATIC: CALCULATE DAILY FINANCIALS
+   UNIFIED UPSERT METHOD
 ========================= */
-financialSchema.statics.computeDailyFinancials = async function ({
-  day,
-  milkCash,
-  maintenanceCost,
-  medicalCost
-}) {
-
-  const totalExpenses = (maintenanceCost || 0) + (medicalCost || 0);
-  const profit = (milkCash || 0) - totalExpenses;
+financialSchema.statics.upsertFinancial = async function (query, data) {
+  const computed = this._calculate(data);
 
   return this.findOneAndUpdate(
-    { periodType: "daily", day },
-    {
-      $set: {
-        milkCash,
-        maintenanceCost,
-        medicalCost,
-        totalExpenses,
-        profit,
-        locked: true
-      }
-    },
+    query,
+    { $set: computed },
     { upsert: true, new: true }
   );
 };
 
 
 /* =========================
-   STATIC: MONTHLY FINANCIALS
+   DAILY
 ========================= */
-financialSchema.statics.computeMonthlyFinancials = async function ({
-  month,
-  milkCash,
-  maintenanceCost,
-  medicalCost
-}) {
-
-  const totalExpenses = (maintenanceCost || 0) + (medicalCost || 0);
-  const profit = (milkCash || 0) - totalExpenses;
-
-  return this.findOneAndUpdate(
-    { periodType: "monthly", month },
+financialSchema.statics.computeDailyFinancials = async function (data) {
+  return this.upsertFinancial(
     {
-      $set: {
-        milkCash,
-        maintenanceCost,
-        medicalCost,
-        totalExpenses,
-        profit,
-        locked: true
-      }
+      periodType: "daily",
+      day: data.day
     },
-    { upsert: true, new: true }
+    data
   );
 };
 
 
 /* =========================
-   STATIC: YEARLY FINANCIALS
+   MONTHLY
 ========================= */
-financialSchema.statics.computeYearlyFinancials = async function ({
-  year,
-  milkCash,
-  maintenanceCost,
-  medicalCost
-}) {
-
-  const totalExpenses = (maintenanceCost || 0) + (medicalCost || 0);
-  const profit = (milkCash || 0) - totalExpenses;
-
-  return this.findOneAndUpdate(
-    { periodType: "yearly", year },
+financialSchema.statics.computeMonthlyFinancials = async function (data) {
+  return this.upsertFinancial(
     {
-      $set: {
-        milkCash,
-        maintenanceCost,
-        medicalCost,
-        totalExpenses,
-        profit,
-        locked: true
-      }
+      periodType: "monthly",
+      month: data.month
     },
-    { upsert: true, new: true }
+    data
   );
 };
 
 
 /* =========================
-   EXPORT MODEL
+   YEARLY
+========================= */
+financialSchema.statics.computeYearlyFinancials = async function (data) {
+  return this.upsertFinancial(
+    {
+      periodType: "yearly",
+      year: data.year
+    },
+    data
+  );
+};
+
+
+/* =========================
+   STRONG UNIQUE SAFETY INDEX
+========================= */
+financialSchema.index(
+  { periodType: 1, day: 1, month: 1, year: 1 },
+  { unique: true, sparse: true }
+);
+
+
+/* =========================
+   EXPORT
 ========================= */
 module.exports = mongoose.model("Financial", financialSchema);
