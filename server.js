@@ -22,6 +22,10 @@ const indexRoutes = require("./routes/index");
 // ======================
 const socketHandler = require("./socket/socket");
 
+// ======================
+// SEED ADMIN
+// ======================
+const seedAdmin = require("./utils/seedAdmin");
 
 // ======================
 // INIT APP + SERVER
@@ -29,31 +33,34 @@ const socketHandler = require("./socket/socket");
 const app = express();
 const server = http.createServer(app);
 
-
 // ======================
 // SOCKET.IO SETUP
 // ======================
 const io = new Server(server, {
   cors: {
     origin: "*",
-    methods: ["GET", "POST"]
-  }
+    methods: ["GET", "POST"],
+  },
 });
 
-// attach io globally
 app.set("io", io);
-
-// initialize socket logic
 socketHandler(io);
 
-
 // ======================
-// DATABASE
+// DATABASE CONNECTION
 // ======================
-mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
-  .then(() => console.log("MongoDB Connected"))
-  .catch(err => console.log("MongoDB Error:", err));
+const MONGO_URI =
+  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/project_db";
 
+mongoose
+  .connect(MONGO_URI)
+  .then(async () => {
+    console.log("🟢 MongoDB Connected");
+
+    // ✅ AUTO SEED ADMIN
+    await seedAdmin();
+  })
+  .catch((err) => console.log("🔴 MongoDB Error:", err));
 
 // ======================
 // MIDDLEWARE
@@ -61,26 +68,28 @@ mongoose.connect("mongodb://127.0.0.1:27017/your-db-name")
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
+// ======================
+// SESSION CONFIG
+// ======================
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "super-secret-key",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+    },
+  })
+);
 
 // ======================
-// SESSION
+// GLOBAL USER (EJS)
 // ======================
-app.use(session({
-  secret: "secret-key",
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 // 1 day
-  }
-}));
-
-// expose user globally in EJS
 app.use((req, res, next) => {
   res.locals.user = req.session.user || null;
   next();
 });
-
 
 // ======================
 // STATIC FILES
@@ -88,22 +97,19 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
-
 // ======================
 // VIEW ENGINE
 // ======================
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
-// layout system
 app.use(expressLayouts);
 app.set("layout", "layout");
-
 
 // ======================
 // ROUTES
 // ======================
-app.use("/", indexRoutes);              // ✅ HOME PAGE (index.ejs)
+app.use("/", indexRoutes);
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
@@ -111,16 +117,14 @@ app.use("/", milkRoutes);
 app.use("/", financialsRoutes);
 app.use("/dairy", newRoutes);
 
-
 // ======================
 // 404 HANDLER
 // ======================
 app.use((req, res) => {
   res.status(404).render("index", {
-    user: { name: "Guest" }
+    user: null,
   });
 });
-
 
 // ======================
 // START SERVER
@@ -128,5 +132,5 @@ app.use((req, res) => {
 const PORT = process.env.PORT || 3000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
