@@ -1,4 +1,5 @@
 const milkService = require("../services/milkService");
+const Milk = require("../models/milk");
 
 
 /* =========================
@@ -7,7 +8,12 @@ const milkService = require("../services/milkService");
 exports.getMilkPage = async (req, res) => {
   try {
     const dairies = await milkService.getMilkingAnimals();
-    res.render("milk", { dairies });
+
+    res.render("milk", {
+      dairies,
+      user: req.user
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).send("Error loading milk page");
@@ -22,7 +28,7 @@ exports.submitMilk = async (req, res) => {
   try {
     await milkService.saveMilkRecords(
       req.body.records,
-      req.user?._id // 🔥 ensures recordedBy is saved
+      req.user?._id
     );
 
     res.redirect("/milk/stats?type=day");
@@ -50,7 +56,8 @@ exports.getMilkStats = async (req, res) => {
         type,
         date: selectedDate,
         records: data.records,
-        stats: data.stats
+        stats: data.stats,
+        user: req.user
       });
     }
 
@@ -63,14 +70,16 @@ exports.getMilkStats = async (req, res) => {
         type,
         month: selectedMonth,
         records: data.records,
-        stats: data.stats
+        stats: data.stats,
+        user: req.user
       });
     }
 
     return res.render("milkStats", {
       type,
       records: [],
-      stats: {}
+      stats: {},
+      user: req.user
     });
 
   } catch (err) {
@@ -110,8 +119,17 @@ exports.getSalesPage = async (req, res) => {
   try {
     const data = await milkService.getSalesPageData();
 
+    // Get latest price (persistent behavior)
+    const latest = await Milk.findOne()
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const currentPrice = latest?.dailyStats?.price || "";
+
     res.render("sales", {
-      standingOrders: data.standingOrders
+      standingOrders: data.standingOrders,
+      currentPrice,
+      user: req.user
     });
 
   } catch (err) {
@@ -180,7 +198,7 @@ exports.omitStandingOrder = async (req, res) => {
 
 
 /* =========================
-   🆕 MILKING HISTORY
+   MILKING HISTORY
 ========================= */
 exports.getMilkingHistory = async (req, res) => {
   try {
@@ -196,7 +214,8 @@ exports.getMilkingHistory = async (req, res) => {
       grouped: data.grouped,
       monthlyTotal: data.monthlyTotal,
       hasData: data.hasData,
-      selectedMonth: month || ""
+      selectedMonth: month || "",
+      user: req.user
     });
 
   } catch (err) {
