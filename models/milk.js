@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 
 /* =========================
-   SALES SUB-SCHEMA (NEW)
+   SALES SUB-SCHEMA
 ========================= */
 const salesSchema = new mongoose.Schema(
   {
@@ -28,7 +28,7 @@ const salesSchema = new mongoose.Schema(
 
 
 /* =========================
-   STANDING ORDERS (SUB-SCHEMA)
+   STANDING ORDERS
 ========================= */
 const standingOrderSchema = new mongoose.Schema(
   {
@@ -36,49 +36,45 @@ const standingOrderSchema = new mongoose.Schema(
     liters: { type: Number, required: true, min: 0 },
 
     isActive: { type: Boolean, default: true },
+    omitted: { type: Boolean, default: false },
 
     effectiveDate: {
       type: Date,
-      default: function () {
+      default: () => {
         const d = new Date();
         d.setDate(d.getDate() + 1);
         return d;
       }
-    },
-
-    omitted: { type: Boolean, default: false }
+    }
   },
   { timestamps: true }
 );
 
 
 /* =========================
-   MAIN MILK SCHEMA
+   MAIN SCHEMA
 ========================= */
 const milkSchema = new mongoose.Schema(
   {
     /* =========================
-       RELATION TO ANIMAL
+       RELATION TO DAIRY
     ========================= */
     dairy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Dairy',
+      ref: "Dairy",
       required: true,
       index: true
     },
 
-    /* =========================
-       WHO RECORDED
-    ========================= */
     recordedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: "User",
       required: true,
       index: true
     },
 
     /* =========================
-       MILK PRODUCTION
+       MILK DATA
     ========================= */
     liters: {
       type: Number,
@@ -88,8 +84,8 @@ const milkSchema = new mongoose.Schema(
 
     remarks: {
       type: String,
-      trim: true,
-      default: ''
+      default: "",
+      trim: true
     },
 
     date: {
@@ -99,14 +95,15 @@ const milkSchema = new mongoose.Schema(
     },
 
     /* =========================
-       DATE HELPERS
+       DATE KEYS
     ========================= */
-    day: { type: String, index: true },   // YYYY-MM-DD
-    month: { type: String, index: true }, // YYYY-MM
+    day: { type: String, index: true },    // YYYY-MM-DD
+    month: { type: String, index: true },  // YYYY-MM
 
 
     /* =========================
-       DAILY FINANCIAL SUMMARY
+       DAILY STATS (FINANCIAL SUMMARY)
+       ⚠️ DO NOT USE FOR SALES SOURCE
     ========================= */
     dailyStats: {
       consumed: { type: Number, default: 0 },
@@ -118,7 +115,7 @@ const milkSchema = new mongoose.Schema(
 
 
     /* =========================
-       🧾 CUSTOMER SALES (NEW CORE)
+       SALES RECORDS (DAILY)
     ========================= */
     sales: [salesSchema],
 
@@ -136,12 +133,12 @@ const milkSchema = new mongoose.Schema(
 
 
 /* =========================
-   DATE NORMALIZATION
+   AUTO DATE NORMALIZATION
 ========================= */
-milkSchema.pre('save', function (next) {
+milkSchema.pre("save", function (next) {
   const d = new Date(this.date);
 
-  this.day = d.toISOString().split('T')[0];
+  this.day = d.toISOString().split("T")[0];
   this.month = this.day.slice(0, 7);
 
   next();
@@ -152,26 +149,26 @@ milkSchema.pre('save', function (next) {
    ACTIVE STANDING ORDERS
 ========================= */
 milkSchema.methods.getActiveStandingOrders = function () {
-  const today = new Date().toISOString().split('T')[0];
+  const today = new Date().toISOString().split("T")[0];
 
   return this.standingOrders.filter(o =>
     !o.omitted &&
     o.isActive &&
-    o.effectiveDate.toISOString().split('T')[0] <= today
+    o.effectiveDate.toISOString().split("T")[0] <= today
   );
 };
 
 
 /* =========================
-   OMIT STANDING ORDER
+   OMIt ORDER (STATIC SAFE)
 ========================= */
 milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
   return this.updateOne(
-    { _id: milkId, 'standingOrders._id': orderId },
+    { _id: milkId, "standingOrders._id": orderId },
     {
       $set: {
-        'standingOrders.$.omitted': true,
-        'standingOrders.$.isActive': false
+        "standingOrders.$.omitted": true,
+        "standingOrders.$.isActive": false
       }
     }
   );
@@ -179,22 +176,22 @@ milkSchema.statics.omitStandingOrder = async function (milkId, orderId) {
 
 
 /* =========================
-   SAVE DAILY STATS (LOCKED)
+   SAVE DAILY STATS
+   ⚠️ USED ONLY FOR SUMMARY SNAPSHOT
 ========================= */
-milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
-
-  const existing = await this.findOne({
-    day,
-    'dailyStats.locked': true
-  });
-
-  if (existing) {
-    throw new Error('Daily stats already locked.');
-  }
-
+milkSchema.statics.saveDailyStats = async function ({
+  day,
+  consumed,
+  price
+}) {
   const agg = await this.aggregate([
     { $match: { day } },
-    { $group: { _id: null, total: { $sum: '$liters' } } }
+    {
+      $group: {
+        _id: null,
+        total: { $sum: "$liters" }
+      }
+    }
   ]);
 
   const total = agg[0]?.total || 0;
@@ -206,11 +203,10 @@ milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
     { day },
     {
       $set: {
-        'dailyStats.consumed': consumed,
-        'dailyStats.available': available,
-        'dailyStats.price': price,
-        'dailyStats.cash': cash,
-        'dailyStats.locked': true
+        "dailyStats.consumed": consumed,
+        "dailyStats.available": available,
+        "dailyStats.price": price,
+        "dailyStats.cash": cash
       }
     }
   );
@@ -218,16 +214,18 @@ milkSchema.statics.saveDailyStats = async function ({ day, consumed, price }) {
 
 
 /* =========================
-   DAILY REPORT
+   DAILY REPORT (FIXED RELIABILITY)
 ========================= */
 milkSchema.statics.getDailyReport = async function (day) {
-
   const records = await this.find({ day })
-    .populate('dairy')
-    .populate('recordedBy', 'name');
+    .populate("dairy")
+    .populate("recordedBy", "name")
+    .lean();
 
   const total = records.reduce((sum, r) => sum + r.liters, 0);
-  const stats = records[0]?.dailyStats || {};
+
+  // safer aggregation from first available stats snapshot
+  const stats = records.find(r => r.dailyStats)?.dailyStats || {};
 
   return {
     records,
@@ -243,7 +241,7 @@ milkSchema.statics.getDailyReport = async function (day) {
 
 
 /* =========================
-   MONTHLY REPORT
+   MONTHLY REPORT (FIXED CASH RELIABILITY)
 ========================= */
 milkSchema.statics.getMonthlyReport = async function (month) {
 
@@ -251,17 +249,17 @@ milkSchema.statics.getMonthlyReport = async function (month) {
     { $match: { month } },
     {
       $group: {
-        _id: '$dairy',
-        total: { $sum: '$liters' },
-        days: { $addToSet: '$day' }
+        _id: "$dairy",
+        total: { $sum: "$liters" },
+        days: { $addToSet: "$day" }
       }
     },
     {
       $project: {
-        dairy: '$_id',
+        dairy: "$_id",
         total: 1,
         avg: {
-          $divide: ['$total', { $size: '$days' }]
+          $divide: ["$total", { $size: "$days" }]
         }
       }
     }
@@ -271,18 +269,22 @@ milkSchema.statics.getMonthlyReport = async function (month) {
     { $match: { month } },
     {
       $group: {
+        _id: "$day",
+        cash: { $first: "$dailyStats.cash" }
+      }
+    },
+    {
+      $group: {
         _id: null,
-        totalCash: { $sum: '$dailyStats.cash' }
+        totalCash: { $sum: "$cash" }
       }
     }
   ]);
 
-  const cash = cashAgg[0]?.totalCash || 0;
-
   return {
     records: grouped,
     stats: {
-      cash
+      cash: cashAgg[0]?.totalCash || 0
     }
   };
 };
@@ -291,12 +293,12 @@ milkSchema.statics.getMonthlyReport = async function (month) {
 /* =========================
    INDEXES
 ========================= */
-milkSchema.index({ dairy: 1, month: 1 });
 milkSchema.index({ dairy: 1, day: 1 });
+milkSchema.index({ dairy: 1, month: 1 });
 milkSchema.index({ date: -1 });
 
 
 /* =========================
    EXPORT
 ========================= */
-module.exports = mongoose.model('Milk', milkSchema);
+module.exports = mongoose.model("Milk", milkSchema);
