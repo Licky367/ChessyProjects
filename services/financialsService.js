@@ -8,15 +8,15 @@ const Financial = require("../models/financials");
 ========================================================= */
 
 /**
- * Extract expense totals (maintenance + medical)
+ * Extract expense totals
  */
 const computeExpenseTotals = (expenseAgg) => {
   let maintenanceCost = 0;
   let medicalCost = 0;
 
   expenseAgg.forEach(e => {
-    if (e._id === "maintenance") maintenanceCost = e.total;
-    if (e._id === "medical") medicalCost = e.total;
+    if (e._id === "maintenance") maintenanceCost = e.total || 0;
+    if (e._id === "medical") medicalCost = e.total || 0;
   });
 
   return { maintenanceCost, medicalCost };
@@ -24,10 +24,37 @@ const computeExpenseTotals = (expenseAgg) => {
 
 
 /**
- * Milk aggregation helper
+ * MILK CASH (UPDATED LOGIC)
+ * -------------------------
+ * Priority:
+ * 1. sales.cash (PRIMARY SOURCE)
+ * 2. fallback: dailyStats.cash (LEGACY SAFETY)
  */
 const getMilkCash = async (match) => {
   const result = await Milk.aggregate([
+    { $match: match },
+
+    {
+      $unwind: {
+        path: "$sales",
+        preserveNullAndEmptyArrays: true
+      }
+    },
+
+    {
+      $group: {
+        _id: null,
+        totalCash: { $sum: { $ifNull: ["$sales.cash", 0] } }
+      }
+    }
+  ]);
+
+  const cashFromSales = result[0]?.totalCash || 0;
+
+  // fallback safety (if no sales exist yet)
+  if (cashFromSales > 0) return cashFromSales;
+
+  const fallback = await Milk.aggregate([
     { $match: match },
     {
       $group: {
@@ -37,12 +64,12 @@ const getMilkCash = async (match) => {
     }
   ]);
 
-  return result[0]?.totalCash || 0;
+  return fallback[0]?.totalCash || 0;
 };
 
 
 /**
- * Expense aggregation helper
+ * EXPENSE AGGREGATION (UNCHANGED BUT CLEANED)
  */
 const getExpenseAgg = async (match) => {
   return await Update.aggregate([
@@ -176,7 +203,7 @@ exports.getFinancials = async ({ day, month, year, type }) => {
 
 
 /* =========================================================
-   OPTIONAL: RAW RECORD ACCESS
+   RAW DATA ACCESS
 ========================================================= */
 exports.getRawRecord = async (query) => {
   return Financial.find(query);
