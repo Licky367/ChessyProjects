@@ -1,0 +1,98 @@
+<div class="profile-container">
+
+  <div class="profile-card">
+
+    <img src="<%= user.profileImage || '/images/default.png' %>" class="profile-img">
+
+    <h2><%= user.name %></h2>
+    <p><%= user.email %></p>
+    <p><%= user.phone || 'No phone' %></p>
+
+    <div class="role-box">
+      <strong>Current Role:</strong>
+      <span><%= user.role %></span>
+    </div>
+
+    <form method="POST" action="/accounts/<%= user._id %>/role">
+      <select name="role" class="role-select">
+
+        <option value="dairyWorker" <%= user.role === 'dairyWorker' ? 'selected' : '' %>>
+          Dairy Worker
+        </option>
+
+        <option value="poultryWorker" <%= user.role === 'poultryWorker' ? 'selected' : '' %>>
+          Poultry Worker
+        </option>
+
+        <option value="admin" <%= user.role === 'admin' ? 'selected' : '' %>>
+          Admin
+        </option>
+
+      </select>
+
+      <button type="submit" class="btn-save">
+        Update Role
+      </button>
+    </form>
+
+  </div>
+
+</div>
+
+<style>
+.profile-container{
+  padding:20px;
+  display:flex;
+  justify-content:center;
+  color:#fff;
+}
+
+.profile-card{
+  background:#0f2f25;
+  padding:30px;
+  border-radius:16px;
+  width:350px;
+  text-align:center;
+}
+
+.profile-img{
+  width:90px;
+  height:90px;
+  border-radius:50%;
+  object-fit:cover;
+  margin-bottom:15px;
+}
+
+.role-box{
+  margin:15px 0;
+  background:#164c3a;
+  padding:10px;
+  border-radius:10px;
+}
+
+.role-select{
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  margin-top:10px;
+  background:#1f6f54;
+  color:#fff;
+}
+
+.btn-save{
+  margin-top:15px;
+  width:100%;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  background:#2ecc71;
+  color:#000;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.btn-save:hover{
+  background:#27ae60;
+}
+</style>
