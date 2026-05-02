@@ -1,7 +1,7 @@
 <div class="page">
 
   <!-- =========================
-       SALES FORM (MASTER FORM)
+       SALES FORM (MASTER)
   ========================= -->
   <form method="POST" action="/sales">
 
@@ -20,13 +20,15 @@
             step="0.1" 
             name="price"
             value="<%= currentPrice || '' %>"
-            <%= user?.role !== 'admin' ? 'readonly' : 'required' %>
+            <%= user?.role !== 'admin' ? 'readonly' : '' %>
           >
         </div>
       </div>
 
       <% if (user?.role !== 'admin') { %>
-        <small style="color:#888;">Only admins can update price</small>
+        <small style="color:#888;">
+          Only admins can update price
+        </small>
       <% } %>
     </div>
 
@@ -35,9 +37,9 @@
          STANDING ORDERS
     ========================= -->
     <div class="card">
-      <h2>Standing Orders (Daily Supply Contracts)</h2>
+      <h2>Standing Orders</h2>
 
-      <!-- ADD FORM -->
+      <!-- ADD ORDER (SEPARATE FORM) -->
       <form method="POST" action="/sales/standing">
         <div class="row">
           <div class="col">
@@ -51,7 +53,7 @@
           </div>
         </div>
 
-        <button>Add Standing Order</button>
+        <button type="submit">Add Standing Order</button>
       </form>
 
       <!-- TABLE -->
@@ -69,27 +71,11 @@
           </thead>
 
           <tbody>
-            <% let index = 0; %>
-
             <% standingOrders.forEach(o => { %>
               <tr class="<%= o.isFuture ? 'future' : '' %>">
 
-                <td>
-                  <%= o.customerName %>
-
-                  <!-- 🔥 Include ONLY active in submission -->
-                  <% if (!o.isFuture) { %>
-                    <input type="hidden" name="records[<%= index %>][customerName]" value="<%= o.customerName %>">
-                  <% } %>
-                </td>
-
-                <td>
-                  <%= o.liters %>
-
-                  <% if (!o.isFuture) { %>
-                    <input type="hidden" name="records[<%= index %>][liters]" value="<%= o.liters %>">
-                  <% } %>
-                </td>
+                <td><%= o.customerName %></td>
+                <td><%= o.liters %></td>
 
                 <td>
                   <%= o.isFuture ? 'Effective Tomorrow' : 'Active' %>
@@ -99,16 +85,13 @@
                   <td>
                     <form method="POST" action="/sales/standing/omit">
                       <input type="hidden" name="id" value="<%= o._id %>">
-                      <button class="omit-btn">Omit</button>
+                      <button type="submit" class="omit-btn">Omit</button>
                     </form>
                   </td>
                 <% } %>
 
               </tr>
-
-              <% if (!o.isFuture) index++; %>
             <% }) %>
-
           </tbody>
         </table>
       <% } else { %>
@@ -119,7 +102,7 @@
 
 
     <!-- =========================
-         MANUAL ORDERS INPUT
+         MANUAL ORDERS
     ========================= -->
     <div class="card">
       <h2>Manual Orders</h2>
@@ -133,29 +116,29 @@
         </thead>
 
         <tbody>
+          <% const baseIndex = standingOrders ? standingOrders.filter(o => !o.isFuture).length : 0; %>
 
           <% for(let i = 0; i < 5; i++) { %>
             <tr>
               <td>
                 <input 
-                  type="text" 
-                  name="records[<%= index + i %>][customerName]" 
+                  type="text"
+                  name="records[<%= baseIndex + i %>][customerName]"
                   placeholder="Customer name"
                 >
               </td>
 
               <td>
                 <input 
-                  type="number" 
-                  step="0.1" 
+                  type="number"
+                  step="0.1"
                   min="0"
-                  name="records[<%= index + i %>][liters]" 
+                  name="records[<%= baseIndex + i %>][liters]"
                   placeholder="Liters"
                 >
               </td>
             </tr>
           <% } %>
-
         </tbody>
       </table>
 
@@ -163,17 +146,19 @@
 
 
     <!-- =========================
-         SUBMIT BUTTON
+         SUBMIT
     ========================= -->
     <div class="card">
-      <button style="width:100%;">Submit Daily Sales</button>
+      <button type="submit" style="width:100%;">
+        Submit Daily Sales
+      </button>
     </div>
 
   </form>
 
 
   <!-- =========================
-       TOTAL DISPLAY
+       TOTAL
   ========================= -->
   <% if (totalSales !== undefined) { %>
     <div class="card total-box">
