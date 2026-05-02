@@ -1,0 +1,114 @@
+<div class="card">
+
+<!-- PROFILE TOP -->
+<div class="profile-top">
+
+<!-- PROFILE IMAGE (click to change) -->
+<img
+id="avatarPreview"
+class="avatar-img"
+src="<%= user && user.profileImage ? ('/uploads/' + user.profileImage) : 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user ? user.name : 'User') + '&background=0b5d1e&color=fff' %>"
+alt="Profile"
+onclick="document.getElementById('fileInput').click()"
+>
+
+<input type="file" id="fileInput" name="profileImage" hidden>
+
+<div class="info">
+<h2><%= user ? user.name : '' %></h2>
+<p><%= user ? user.email : '' %></p>
+<p><%= user ? user.phone : '' %></p>
+</div>
+
+</div>
+
+<hr style="margin:20px 0;">
+
+<h2>Edit Profile</h2>
+
+<form action="/profile/update" method="POST" enctype="multipart/form-data">
+
+<label>Full Name</label>
+<input type="text" name="name" value="<%= user ? user.name : '' %>">
+
+<label>Email</label>
+<input type="email" name="email" value="<%= user ? user.email : '' %>">
+
+<label>Phone</label>
+<div class="phone-group">
+<div class="country-code">🇰🇪 +254</div>
+<input type="text" name="phone" id="phone" value="<%= user ? user.phone : '' %>">
+</div>
+
+<hr style="margin:20px 0;">
+
+<h3>Change Password</h3>
+
+<label>Current Password</label>
+<div class="password-wrapper">
+<input type="password" name="password" placeholder="Current Password">
+<span class="toggle-pass">Show</span>
+</div>
+
+<label>New Password</label>
+<div class="password-wrapper">
+<input type="password" name="newPassword" placeholder="New Password">
+<span class="toggle-pass">Show</span>
+</div>
+
+<label>Confirm New Password</label>
+<div class="password-wrapper">
+<input type="password" name="confirmNewPassword" placeholder="Confirm New Password">
+<span class="toggle-pass">Show</span>
+</div>
+
+<button type="submit">Update Profile</button>
+
+</form>
+
+</div>
+
+<script>
+/* IMAGE PREVIEW */
+const fileInput = document.getElementById("fileInput");
+const avatarPreview = document.getElementById("avatarPreview");
+
+fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        avatarPreview.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+/* PHONE FORMAT (Kenya) */
+const phone = document.getElementById("phone");
+
+phone.addEventListener("input", () => {
+    let value = phone.value.replace(/\D/g, "");
+
+    if (value.startsWith("254")) value = value.slice(3);
+    if (value.startsWith("0")) value = value.slice(1);
+
+    value = value.slice(0, 9);
+
+    let formatted = "";
+    if (value.length > 0) formatted += value.substring(0, 3);
+    if (value.length > 3) formatted += " " + value.substring(3, 6);
+    if (value.length > 6) formatted += " " + value.substring(6, 9);
+
+    phone.value = formatted;
+});
+
+/* SHOW/HIDE PASSWORDS */
+document.querySelectorAll(".toggle-pass").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const input = btn.previousElementSibling;
+        input.type = input.type === "password" ? "text" : "password";
+        btn.textContent = input.type === "password" ? "Show" : "Hide";
+    });
+});
+</script>
