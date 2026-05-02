@@ -125,9 +125,9 @@ font-size:14px;
 background:rgba(255,255,255,.15);
 }
 
-/* DROPDOWN */
+/* TOC STYLE DROPDOWN */
 .dropdown-section{
-margin-top:10px;
+margin-top:8px;
 }
 
 .dropdown-header{
@@ -138,15 +138,28 @@ display:flex;
 justify-content:space-between;
 align-items:center;
 border-radius:6px;
+font-size:14px;
+opacity:.95;
 }
 
 .dropdown-header:hover{
-background:rgba(255,255,255,.15);
+background:rgba(255,255,255,.12);
+}
+
+.dropdown-header .arrow{
+transition:.2s ease;
+font-size:16px;
+}
+
+.dropdown-section.active .arrow{
+transform:rotate(90deg);
 }
 
 .dropdown-content{
 display:none;
+margin-top:4px;
 padding-left:10px;
+border-left:2px solid rgba(255,255,255,.2);
 }
 
 .dropdown-section.active .dropdown-content{
@@ -155,7 +168,14 @@ display:block;
 
 .dropdown-content a{
 font-size:13px;
-padding-left:15px;
+padding:8px 10px;
+margin:2px 0;
+border-radius:4px;
+opacity:.9;
+}
+
+.dropdown-content a:hover{
+background:rgba(255,255,255,.12);
 }
 
 /* OVERLAY */
@@ -229,6 +249,9 @@ if(user){
     <div class="dropdown-profile">
       <% if(user){ %>
         <a href="/profile">👤 My Account</a>
+        <% if(user.role === "admin"){ %>
+          <a href="/accounts">👥 People</a>
+        <% } %>
         <a href="/logout">🚪 Logout</a>
       <% } %>
     </div>
@@ -244,30 +267,32 @@ if(user){
     <a href="/">🏠 Home</a>
     <a href="/create-staff">👥 Add Staff</a>
 
-    <!-- DAIRY DROPDOWN -->
+    <!-- DAIRY -->
     <div class="dropdown-section">
       <div class="dropdown-header" onclick="toggleDropdown(this)">
-        🐄 Dairy Projects ⌄
+        🐄 Dairy Projects
+        <span class="arrow">›</span>
       </div>
       <div class="dropdown-content">
-        <a href="/dairy/new">➕ Add Project</a>
-        <a href="/dairy/projects">📁 View Dairy Projects</a>
-        <a href="/structures">🏗️ View Dairy Facilities</a>
-        <a href="/milk">🥛 Production</a>
-        <a href="/sales">💰 Sales</a>
-        <a href="/milk/stats">📊 Statistics</a>
-        <a href="/financials/dashboard">📈 Financials</a>
+        <a href="/dairy/new">Add Project</a>
+        <a href="/dairy/projects">View Projects</a>
+        <a href="/structures">Facilities</a>
+        <a href="/milk">Production</a>
+        <a href="/sales">Sales</a>
+        <a href="/milk/stats">Statistics</a>
+        <a href="/financials/dashboard">Financials</a>
       </div>
     </div>
 
-    <!-- POULTRY DROPDOWN -->
+    <!-- POULTRY -->
     <div class="dropdown-section">
       <div class="dropdown-header" onclick="toggleDropdown(this)">
-        🐔 Poultry Projects ⌄
+        🐔 Poultry Projects
+        <span class="arrow">›</span>
       </div>
       <div class="dropdown-content">
-        <a href="/poultry/add">➕ Add Project</a>
-        <a href="/poultry/projects">📁 View Poultry Projects</a>
+        <a href="/poultry/add">Add Project</a>
+        <a href="/poultry/projects">View Projects</a>
       </div>
     </div>
 
@@ -275,8 +300,8 @@ if(user){
 
     <a href="/">🏠 Home</a>
     <a href="/dairy/projects">🐄 View Dairy Cattle</a>
-    <a href="/structures">🏗️ View Dairy Facilities</a>
-    <a href="/milk">🥛 Record Production</a>
+    <a href="/structures">🏗️ Facilities</a>
+    <a href="/milk">🥛 Production</a>
     <a href="/sales">💰 Sales</a>
 
   <% } %>
@@ -300,6 +325,7 @@ if(user){
 <script>
 const sidebar = document.getElementById("sidebar");
 const overlay = document.getElementById("overlay");
+const profileBox = document.getElementById("profileBox");
 
 function openSidebar(){
   sidebar.classList.add("active");
@@ -313,13 +339,17 @@ function closeSidebar(){
 
 function toggleDropdown(el){
   const parent = el.parentElement;
-
-  document.querySelectorAll(".dropdown-section").forEach(sec=>{
-    if(sec !== parent) sec.classList.remove("active");
-  });
-
   parent.classList.toggle("active");
 }
+
+function toggleProfile(e){
+  e.stopPropagation();
+  profileBox.classList.toggle("active");
+}
+
+document.addEventListener("click", ()=>{
+  profileBox.classList.remove("active");
+});
 </script>
 
 <% } %>
