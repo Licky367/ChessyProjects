@@ -5,25 +5,31 @@ const controller = require("../controllers/financialsController");
 
 
 /* =========================
-   DAILY FINANCIALS
+   DASHBOARD
 ========================= */
-router.get("/daily", controller.getDailyFinancials);
+router.get("/dashboard", controller.getDashboard);
 
 
 /* =========================
-   MONTHLY FINANCIALS
+   DAILY CUSTOMERS (BY DATE)
 ========================= */
-router.get("/monthly", controller.getMonthlyFinancials);
+router.get("/daily-customers", controller.getDailyCustomers);
 
 
 /* =========================
-   YEARLY FINANCIALS
+   FINANCIAL SUMMARY (MONTH + YEAR)
 ========================= */
-router.get("/yearly", controller.getYearlyFinancials);
+router.get("/summary", controller.getFinancialSummary);
 
 
 /* =========================
-   FETCH SAVED RECORD
+   MONTHLY EXPENSES (MONTH + YEAR)
+========================= */
+router.get("/expenses", controller.getMonthlyExpenses);
+
+
+/* =========================
+   OPTIONAL: RAW RECORD ACCESS (ADMIN / DEBUG)
 ========================= */
 router.get("/record", controller.getFinancialRecord);
 
