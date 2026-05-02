@@ -1,112 +1,95 @@
-const Milk = require("../models/milk");
-const Update = require("../models/Update");
-const Financial = require("../models/financials");
+const financialsService = require("../services/financialsService");
 
 
 /* =========================
-   FINANCIAL DASHBOARD VIEW
+   DASHBOARD PAGE
 ========================= */
-exports.financialsView = async (req, res) => {
+exports.getDashboard = async (req, res) => {
   try {
-
-    const { day, month, year, type = "monthly" } = req.query;
-
-    let financial = null;
-    let sales = [];
-    let expenses = [];
-    let totalSalesCash = 0;
-    let totalExpenses = 0;
+    return res.render("financial-dashboard");
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error loading dashboard");
+  }
+};
 
 
-    /* =========================
-       1. GET STORED FINANCIAL RECORD
-    ========================= */
-    financial = await Financial.findOne({
-      periodType: type,
-      ...(day && { day }),
-      ...(month && { month }),
-      ...(year && { year: Number(year) })
-    });
+/* =========================
+   DAILY CUSTOMERS
+========================= */
+exports.getDailyCustomers = async (req, res) => {
+  try {
+    const { day } = req.query;
 
+    const result = await financialsService.getDailyCustomers(day);
 
-    /* =========================
-       2. MILK SALES (INCOME DETAIL)
-    ========================= */
-    const milkMatch = {};
-
-    if (day) milkMatch.day = day;
-    if (month) milkMatch.month = month;
-    if (year) {
-      milkMatch.$expr = {
-        $eq: [{ $year: "$date" }, Number(year)]
-      };
-    }
-
-    const milkDocs = await Milk.find(milkMatch).lean();
-
-    milkDocs.forEach(doc => {
-      if (doc.sales?.length) {
-        doc.sales.forEach(s => {
-          sales.push(s);
-          totalSalesCash += s.cash || 0;
-        });
-      }
-    });
-
-
-    /* =========================
-       3. EXPENSES (UPDATE MODEL)
-    ========================= */
-    const expenseMatch = {};
-
-    if (month) {
-      expenseMatch.month = month;
-    } else if (year) {
-      expenseMatch.$expr = {
-        $eq: [{ $year: "$createdAt" }, Number(year)]
-      };
-    }
-
-    const updateDocs = await Update.find(expenseMatch).lean();
-
-    updateDocs.forEach(u => {
-      if (u.type === "maintenance") {
-        expenses.push({
-          type: "maintenance",
-          maintenance: u.maintenance,
-          charges: u.maintenance?.charges || 0
-        });
-        totalExpenses += u.maintenance?.charges || 0;
-      }
-
-      if (u.type === "medical") {
-        expenses.push({
-          type: "medical",
-          medical: u.medical,
-          charges: u.medical?.charges || 0
-        });
-        totalExpenses += u.medical?.charges || 0;
-      }
-    });
-
-
-    /* =========================
-       4. RENDER VIEW
-    ========================= */
-    return res.render("financials", {
-      financial,
-      sales,
-      expenses,
-      totalSalesCash,
-      totalExpenses,
+    return res.render("daily-customers", {
       day,
-      month,
-      year,
-      type
+      sales: result.sales,
+      totalSalesCash: result.totalSalesCash
     });
 
   } catch (err) {
     console.error(err);
-    return res.status(500).send("Error loading financial dashboard");
+    return res.status(500).send("Error loading daily customers");
+  }
+};
+
+
+/* =========================
+   FINANCIAL SUMMARY (MONTH + YEAR)
+========================= */
+exports.getFinancialSummary = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    const result = await financialsService.getFinancialSummary(month, year);
+
+    return res.render("financial-summary", {
+      month,
+      year,
+      financial: result
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error loading financial summary");
+  }
+};
+
+
+/* =========================
+   MONTHLY EXPENSES
+========================= */
+exports.getMonthlyExpenses = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    const result = await financialsService.getMonthlyExpenses(month, year);
+
+    return res.render("monthly-expenses", {
+      month,
+      year,
+      expenses: result.expenses,
+      totalExpenses: result.totalExpenses
+    });
+
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error loading expenses");
+  }
+};
+
+
+/* =========================
+   RAW RECORD (DEBUG / ADMIN ONLY)
+========================= */
+exports.getFinancialRecord = async (req, res) => {
+  try {
+    const record = await financialsService.getRawRecord(req.query);
+    return res.json(record);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error fetching record");
   }
 };
