@@ -53,7 +53,7 @@ th{ background:#f8f9fa; }
   background:#f8f9fa;
   padding:15px;
   border-radius:10px;
-  min-width:150px;
+  min-width:160px;
 }
 </style>
 
@@ -87,23 +87,23 @@ th{ background:#f8f9fa; }
 
     <% if (type === 'day') { %>
 
-      <h3>Daily Production</h3>
+      <h3>Daily Milk Production</h3>
 
       <table>
         <thead>
           <tr>
             <th>Code</th>
-            <th>Name</th>
+            <th>Animal</th>
             <th>Liters</th>
           </tr>
         </thead>
 
         <tbody>
-          <% (records || []).forEach(r => { %>
+          <% records.forEach(r => { %>
             <tr>
-              <td><%= r.dairy?.code || '' %></td>
-              <td><%= r.dairy?.name || '' %></td>
-              <td><%= r.liters || 0 %></td>
+              <td><%= r.dairy.code %></td>
+              <td><%= r.dairy.name %></td>
+              <td><%= r.liters %></td>
             </tr>
           <% }) %>
         </tbody>
@@ -111,13 +111,17 @@ th{ background:#f8f9fa; }
 
 
       <!-- =========================
-           GLOBAL SUMMARY
+           GLOBAL FINANCIAL SUMMARY
       ========================= -->
       <div class="summary">
-        <div class="box">Total Production: <b><%= stats.total || 0 %> L</b></div>
-        <div class="box">Consumed: <b><%= stats.consumed || 0 %> L</b></div>
-        <div class="box">Available: <b><%= stats.available || 0 %> L</b></div>
-        <div class="box">Global Revenue: <b>KES <%= stats.cash || 0 %></b></div>
+        <div class="box">Total Milk: <b><%= stats.total %> L</b></div>
+        <div class="box">Consumed: <b><%= stats.consumed %> L</b></div>
+        <div class="box">Available: <b><%= stats.available %> L</b></div>
+
+        <div class="box">
+          Global Revenue:
+          <b>KES <%= stats.cash %></b>
+        </div>
 
         <% if (stats.price !== undefined) { %>
           <div class="box">Price: <b>KES <%= stats.price %>/L</b></div>
@@ -126,17 +130,17 @@ th{ background:#f8f9fa; }
         <% if (stats.locked) { %>
           <div class="box" style="color:red;">🔒 Locked</div>
         <% } else { %>
-          <div class="box" style="color:#888;">Not Locked</div>
+          <div class="box" style="color:#888;">Open</div>
         <% } %>
       </div>
 
 
       <!-- =========================
-           CUSTOMER SALES BREAKDOWN
+           PER CUSTOMER SALES (IMPORTANT)
       ========================= -->
-      <h3 style="margin-top:25px;">Customer Sales Breakdown</h3>
+      <% if (sales && sales.length > 0) { %>
 
-      <% if (sales && sales.length) { %>
+        <h3 style="margin-top:25px;">Customer Sales Breakdown</h3>
 
         <table>
           <thead>
@@ -148,26 +152,27 @@ th{ background:#f8f9fa; }
           </thead>
 
           <tbody>
-            <% (sales || []).forEach(s => { %>
+            <% let totalCustomerRevenue = 0; %>
+
+            <% sales.forEach(s => { %>
               <tr>
                 <td><%= s.customerName %></td>
                 <td><%= s.liters %></td>
                 <td><%= s.cash %></td>
               </tr>
+
+              <% totalCustomerRevenue += s.cash; %>
             <% }) %>
           </tbody>
         </table>
 
+
         <div class="summary">
           <div class="box">
             Total Customer Revenue:
-            <b>KES <%= totalCustomerCash || 0 %></b>
+            <b>KES <%= totalCustomerRevenue %></b>
           </div>
         </div>
-
-      <% } else { %>
-
-        <p style="color:#888;">No sales recorded for this day.</p>
 
       <% } %>
 
@@ -185,28 +190,29 @@ th{ background:#f8f9fa; }
         <thead>
           <tr>
             <th>Code</th>
-            <th>Name</th>
+            <th>Animal</th>
             <th>Total (L)</th>
             <th>Average</th>
           </tr>
         </thead>
 
         <tbody>
-          <% (records || []).forEach(r => { %>
+          <% records.forEach(r => { %>
             <tr>
-              <td><%= r.dairy?.code || '' %></td>
-              <td><%= r.dairy?.name || '' %></td>
-              <td><%= r.total || 0 %></td>
-              <td><%= (r.avg || 0).toFixed(2) %></td>
+              <td><%= r.dairy.code %></td>
+              <td><%= r.dairy.name %></td>
+              <td><%= r.total %></td>
+              <td><%= r.avg.toFixed(2) %></td>
             </tr>
           <% }) %>
         </tbody>
       </table>
 
+
       <div class="summary">
-        <div class="box">Total: <b><%= stats.total || 0 %> L</b></div>
-        <div class="box">Average: <b><%= stats.avg || 0 %></b></div>
-        <div class="box">Global Revenue: <b>KES <%= stats.cash || 0 %></b></div>
+        <div class="box">Total Milk: <b><%= stats.total %> L</b></div>
+        <div class="box">Average: <b><%= stats.avg %> L</b></div>
+        <div class="box">Global Revenue: <b>KES <%= stats.cash %></b></div>
       </div>
 
     <% } %>
@@ -221,5 +227,4 @@ th{ background:#f8f9fa; }
     <% } %>
 
   </div>
-
 </div>
