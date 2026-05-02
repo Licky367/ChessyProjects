@@ -2,6 +2,7 @@
 
 <style>
 .page{ max-width:1100px; margin:auto; }
+
 .card{
   background:#fff;
   padding:25px;
@@ -80,7 +81,7 @@ th{ background:#f8f9fa; }
 
 
   <!-- =========================
-       MAIN VIEW
+       DAILY VIEW
   ========================= -->
   <div class="card">
 
@@ -110,28 +111,66 @@ th{ background:#f8f9fa; }
 
 
       <!-- =========================
-           SUMMARY (READ ONLY)
+           SUMMARY (GLOBAL STATS ONLY)
       ========================= -->
       <div class="summary">
         <div class="box">Total Production: <b><%= stats.total %> L</b></div>
         <div class="box">Consumed: <b><%= stats.consumed %> L</b></div>
         <div class="box">Available: <b><%= stats.available %> L</b></div>
-        <div class="box">Cash: <b>KES <%= stats.cash %></b></div>
+        <div class="box">Global Revenue: <b>KES <%= stats.cash %></b></div>
 
         <% if (stats.price !== undefined) { %>
           <div class="box">Price: <b>KES <%= stats.price %>/L</b></div>
         <% } %>
 
         <% if (stats.locked) { %>
-          <div class="box" style="color:red;">
-            🔒 Locked
-          </div>
+          <div class="box" style="color:red;">🔒 Locked</div>
         <% } else { %>
-          <div class="box" style="color:#888;">
-            Not Locked
-          </div>
+          <div class="box" style="color:#888;">Not Locked</div>
         <% } %>
       </div>
+
+
+      <!-- =========================
+           PER CUSTOMER SALES
+      ========================= -->
+      <% if (sales && sales.length) { %>
+
+        <h3 style="margin-top:25px;">Customer Sales Breakdown</h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Customer</th>
+              <th>Liters</th>
+              <th>Cash (KES)</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            <% let totalCustomerCash = 0; %>
+
+            <% sales.forEach(s => { %>
+              <tr>
+                <td><%= s.customerName %></td>
+                <td><%= s.liters %></td>
+                <td><%= s.cash %></td>
+              </tr>
+
+              <% totalCustomerCash += s.cash; %>
+            <% }) %>
+          </tbody>
+        </table>
+
+
+        <div class="summary">
+          <div class="box">
+            Total Customer Revenue:
+            <b>KES <%= totalCustomerCash %></b>
+          </div>
+        </div>
+
+      <% } %>
 
     <% } %>
 
@@ -168,7 +207,7 @@ th{ background:#f8f9fa; }
       <div class="summary">
         <div class="box">Total: <b><%= stats.total %> L</b></div>
         <div class="box">Average: <b><%= stats.avg %> L</b></div>
-        <div class="box">Cash: <b>KES <%= stats.cash %></b></div>
+        <div class="box">Global Revenue: <b>KES <%= stats.cash %></b></div>
       </div>
 
     <% } %>
