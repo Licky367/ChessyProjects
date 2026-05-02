@@ -35,7 +35,19 @@ exports.saveMilkRecords = async (records, userId) => {
    DAILY STATS
 ========================= */
 exports.getDailyStats = async (day) => {
-  return Milk.getDailyReport(day);
+  const data = await Milk.getDailyReport(day);
+
+  return {
+    records: data.records || [],
+    stats: {
+      total: data.stats?.total || 0,
+      consumed: data.stats?.consumed || 0,
+      available: data.stats?.available || 0,
+      cash: data.stats?.cash || 0,
+      price: data.stats?.price || 0,
+      locked: data.stats?.locked || false
+    }
+  };
 };
 
 
@@ -69,21 +81,25 @@ exports.getCurrentPrice = async () => {
 exports.getMonthlyStats = async (month) => {
   const records = await Milk.getMonthlyReport(month);
 
+  const dairyIds = records?.records?.map(r => r.dairy) || [];
+
   const dairies = await Dairy.find({
-    _id: { $in: records.records.map(r => r.dairy) }
+    _id: { $in: dairyIds }
   });
 
   const map = {};
   dairies.forEach(d => (map[d._id] = d));
 
-  const formatted = records.records.map(r => ({
-    dairy: map[r.dairy],
-    total: r.total,
-    avg: r.avg
+  const formatted = (records.records || []).map(r => ({
+    dairy: map[r.dairy] || null,
+    total: r.total || 0,
+    avg: r.avg || 0
   }));
 
 
-  /* CASH LOGIC */
+  /* =========================
+     CASH LOGIC (SAFE)
+  ========================= */
   const cashAgg = await Milk.aggregate([
     { $match: { month } },
     {
@@ -102,7 +118,7 @@ exports.getMonthlyStats = async (month) => {
     }
   ]);
 
-  const totalCash = cashAgg[0]?.totalCash || 0;
+  const totalCash = cashAgg?.[0]?.totalCash || 0;
 
   const total = formatted.reduce((sum, r) => sum + r.total, 0);
   const avg = formatted.length ? total / formatted.length : 0;
@@ -142,26 +158,9 @@ exports.processDailySales = async ({ records, price, user }) => {
 
   const validRecords = records.filter(r => r.customerName && r.liters);
 
-  const consumed = validRecords.reduce((sum, r) => {
-    return sum + Number(r.liters || 0);
-  }, 0);
-
-
-  /* PRICE FALLBACK */
-  let finalPrice = Number(price);
-  if (!finalPrice) {
-    finalPrice = await exports.getCurrentPrice();
-  }
-
-
-  const sales = validRecords.map(r => ({
-    customerName: r.customerName,
-    liters: Number(r.liters),
-    cash: Number(r.liters) * finalPrice
-  }));
-
-
-  /* ENSURE DAILY DOC EXISTS */
+  /* =========================
+     GET OR CREATE DOC
+  ========================= */
   let doc = await Milk.findOne({ day });
 
   if (!doc) {
@@ -170,14 +169,37 @@ exports.processDailySales = async ({ records, price, user }) => {
       sales: [],
       dailyStats: {
         consumed: 0,
-        price: finalPrice,
+        price: 0,
         locked: false
       }
     });
   }
 
 
-  /* STORE SALES */
+  /* =========================
+     PRICE HANDLING
+  ========================= */
+  let finalPrice = Number(price);
+
+  if (!finalPrice) {
+    finalPrice = await exports.getCurrentPrice();
+  }
+
+
+  /* =========================
+     SALES BUILD
+  ========================= */
+  const sales = validRecords.map(r => ({
+    customerName: r.customerName,
+    liters: Number(r.liters),
+    cash: Number(r.liters) * finalPrice,
+    time: new Date()
+  }));
+
+
+  /* =========================
+     UPDATE SALES (ACCUMULATE)
+  ========================= */
   await Milk.updateOne(
     { _id: doc._id },
     {
@@ -188,10 +210,30 @@ exports.processDailySales = async ({ records, price, user }) => {
   );
 
 
-  /* UPDATE DAILY STATS */
+  /* =========================
+     RECALCULATE TOTAL CONSUMED
+  ========================= */
+  const existing = doc.sales || [];
+
+  const previousTotal = existing.reduce(
+    (sum, s) => sum + Number(s.liters || 0),
+    0
+  );
+
+  const newTotal = validRecords.reduce(
+    (sum, r) => sum + Number(r.liters || 0),
+    0
+  );
+
+  const totalConsumed = previousTotal + newTotal;
+
+
+  /* =========================
+     UPDATE DAILY STATS
+  ========================= */
   await Milk.saveDailyStats({
     day,
-    consumed,
+    consumed: totalConsumed,
     price: finalPrice
   });
 
