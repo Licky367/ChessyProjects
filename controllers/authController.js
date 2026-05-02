@@ -23,15 +23,29 @@ exports.renderReset = (req, res) => {
 // ================= SIGNUP =================
 exports.signup = async (req, res) => {
   try {
-    const { name, email, password, phone } = req.body;
+    let { name, email, password, phone } = req.body;
+
+    // Normalize email (important)
+    email = email.toLowerCase().trim();
+
     const profileImage = req.file ? req.file.filename : "";
 
+    // Basic validation
     if (!name || !email || !password) {
       return res.render("signup", {
         error: "All required fields must be filled",
       });
     }
 
+    if (password.length < 6) {
+      return res.render("signup", {
+        error: "Password must be at least 6 characters",
+      });
+    }
+
+    // Service handles:
+    // - invitation check
+    // - role assignment
     await authService.signup({
       name,
       email,
@@ -50,15 +64,19 @@ exports.signup = async (req, res) => {
 // ================= LOGIN =================
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+
+    // Normalize email
+    email = email.toLowerCase().trim();
 
     const user = await authService.login({ email, password });
 
+    // Store minimal safe session data
     req.session.user = {
       id: user._id,
       name: user.name,
       role: user.role,
-      profileImage: user.profileImage,
+      profileImage: user.profileImage || "",
     };
 
     res.redirect("/");
@@ -71,6 +89,7 @@ exports.login = async (req, res) => {
 // ================= LOGOUT =================
 exports.logout = (req, res) => {
   req.session.destroy(() => {
+    res.clearCookie("connect.sid"); // cleaner logout
     res.redirect("/login");
   });
 };
@@ -78,7 +97,9 @@ exports.logout = (req, res) => {
 // ================= FORGOT PASSWORD =================
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    let { email } = req.body;
+
+    email = email.toLowerCase().trim();
 
     await authService.forgotPassword(email);
 
@@ -100,6 +121,13 @@ exports.resetPassword = async (req, res) => {
   try {
     const { password } = req.body;
     const token = req.params.token;
+
+    if (!password || password.length < 6) {
+      return res.render("reset-password", {
+        token,
+        error: "Password must be at least 6 characters",
+      });
+    }
 
     await authService.resetPassword(token, password);
 
