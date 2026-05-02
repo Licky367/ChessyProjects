@@ -3,16 +3,32 @@ const Update = require("../models/Update");
 const Financial = require("../models/financials");
 
 
-/* =========================
-   GET DAILY FINANCIAL DATA
-========================= */
-exports.computeDailyFinancials = async (day) => {
+/* =========================================================
+   HELPERS
+========================================================= */
 
-  /* =========================
-     1. MILK INCOME
-  ========================= */
-  const milkAgg = await Milk.aggregate([
-    { $match: { day } },
+/**
+ * Extract expense totals (maintenance + medical)
+ */
+const computeExpenseTotals = (expenseAgg) => {
+  let maintenanceCost = 0;
+  let medicalCost = 0;
+
+  expenseAgg.forEach(e => {
+    if (e._id === "maintenance") maintenanceCost = e.total;
+    if (e._id === "medical") medicalCost = e.total;
+  });
+
+  return { maintenanceCost, medicalCost };
+};
+
+
+/**
+ * Milk aggregation helper
+ */
+const getMilkCash = async (match) => {
+  const result = await Milk.aggregate([
+    { $match: match },
     {
       $group: {
         _id: null,
@@ -21,21 +37,16 @@ exports.computeDailyFinancials = async (day) => {
     }
   ]);
 
-  const milkCash = milkAgg[0]?.totalCash || 0;
+  return result[0]?.totalCash || 0;
+};
 
 
-  /* =========================
-     2. EXPENSES (UPDATE MODEL)
-  ========================= */
-  const expenseAgg = await Update.aggregate([
-    {
-      $match: {
-        $or: [
-          { type: "maintenance" },
-          { type: "medical" }
-        ]
-      }
-    },
+/**
+ * Expense aggregation helper
+ */
+const getExpenseAgg = async (match) => {
+  return await Update.aggregate([
+    { $match: match },
     {
       $group: {
         _id: "$type",
@@ -51,19 +62,21 @@ exports.computeDailyFinancials = async (day) => {
       }
     }
   ]);
-
-  let maintenanceCost = 0;
-  let medicalCost = 0;
-
-  expenseAgg.forEach(e => {
-    if (e._id === "maintenance") maintenanceCost = e.total;
-    if (e._id === "medical") medicalCost = e.total;
-  });
+};
 
 
-  /* =========================
-     3. SAVE FINANCIAL RECORD
-  ========================= */
+/* =========================================================
+   DAILY FINANCIALS
+========================================================= */
+exports.computeDailyFinancials = async (day) => {
+
+  const milkCash = await getMilkCash({ day });
+
+  const expenseAgg = await getExpenseAgg({});
+
+  const { maintenanceCost, medicalCost } =
+    computeExpenseTotals(expenseAgg);
+
   return Financial.computeDailyFinancials({
     day,
     milkCash,
@@ -73,40 +86,26 @@ exports.computeDailyFinancials = async (day) => {
 };
 
 
-/* =========================
-   GET MONTHLY FINANCIAL DATA
-========================= */
-exports.computeMonthlyFinancials = async (month) => {
+/* =========================================================
+   MONTHLY FINANCIALS
+========================================================= */
+exports.computeMonthlyFinancials = async (month, year) => {
 
-  /* =========================
-     1. MILK CASH
-  ========================= */
-  const milkAgg = await Milk.aggregate([
-    { $match: { month } },
-    {
-      $group: {
-        _id: null,
-        totalCash: { $sum: "$dailyStats.cash" }
-      }
-    }
-  ]);
+  const milkCash = await getMilkCash({ month });
 
-  const milkCash = milkAgg[0]?.totalCash || 0;
-
-
-  /* =========================
-     2. EXPENSES
-  ========================= */
   const expenseAgg = await Update.aggregate([
     {
       $addFields: {
-        month: {
-          $substr: ["$createdAt", 0, 7]
-        }
+        month: { $substr: ["$createdAt", 0, 7] }
       }
     },
     {
-      $match: { month }
+      $match: {
+        month,
+        ...(year && {
+          $expr: { $eq: [{ $year: "$createdAt" }, Number(year)] }
+        })
+      }
     },
     {
       $group: {
@@ -124,20 +123,12 @@ exports.computeMonthlyFinancials = async (month) => {
     }
   ]);
 
-  let maintenanceCost = 0;
-  let medicalCost = 0;
+  const { maintenanceCost, medicalCost } =
+    computeExpenseTotals(expenseAgg);
 
-  expenseAgg.forEach(e => {
-    if (e._id === "maintenance") maintenanceCost = e.total;
-    if (e._id === "medical") medicalCost = e.total;
-  });
-
-
-  /* =========================
-     3. SAVE MONTHLY FINANCIALS
-  ========================= */
   return Financial.computeMonthlyFinancials({
     month,
+    year,
     milkCash,
     maintenanceCost,
     medicalCost
@@ -145,60 +136,21 @@ exports.computeMonthlyFinancials = async (month) => {
 };
 
 
-/* =========================
-   GET YEARLY FINANCIAL DATA
-========================= */
+/* =========================================================
+   YEARLY FINANCIALS
+========================================================= */
 exports.computeYearlyFinancials = async (year) => {
 
-  const milkAgg = await Milk.aggregate([
-    {
-      $addFields: {
-        year: { $year: "$date" }
-      }
-    },
-    { $match: { year } },
-    {
-      $group: {
-        _id: null,
-        totalCash: { $sum: "$dailyStats.cash" }
-      }
-    }
-  ]);
-
-  const milkCash = milkAgg[0]?.totalCash || 0;
-
-
-  const expenseAgg = await Update.aggregate([
-    {
-      $addFields: {
-        year: { $year: "$createdAt" }
-      }
-    },
-    { $match: { year } },
-    {
-      $group: {
-        _id: "$type",
-        total: {
-          $sum: {
-            $cond: [
-              { $eq: ["$type", "maintenance"] },
-              "$maintenance.charges",
-              "$medical.charges"
-            ]
-          }
-        }
-      }
-    }
-  ]);
-
-  let maintenanceCost = 0;
-  let medicalCost = 0;
-
-  expenseAgg.forEach(e => {
-    if (e._id === "maintenance") maintenanceCost = e.total;
-    if (e._id === "medical") medicalCost = e.total;
+  const milkCash = await getMilkCash({
+    $expr: { $eq: [{ $year: "$date" }, Number(year)] }
   });
 
+  const expenseAgg = await getExpenseAgg({
+    $expr: { $eq: [{ $year: "$createdAt" }, Number(year)] }
+  });
+
+  const { maintenanceCost, medicalCost } =
+    computeExpenseTotals(expenseAgg);
 
   return Financial.computeYearlyFinancials({
     year,
@@ -209,15 +161,23 @@ exports.computeYearlyFinancials = async (year) => {
 };
 
 
-/* =========================
-   GET FINANCIAL RECORDS
-========================= */
+/* =========================================================
+   GET STORED FINANCIAL RECORD
+========================================================= */
 exports.getFinancials = async ({ day, month, year, type }) => {
   const filter = { periodType: type };
 
   if (day) filter.day = day;
   if (month) filter.month = month;
-  if (year) filter.year = year;
+  if (year) filter.year = Number(year);
 
   return Financial.findOne(filter);
+};
+
+
+/* =========================================================
+   OPTIONAL: RAW RECORD ACCESS
+========================================================= */
+exports.getRawRecord = async (query) => {
+  return Financial.find(query);
 };
