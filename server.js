@@ -16,6 +16,7 @@ const milkRoutes = require("./routes/milk");
 const newRoutes = require("./routes/new");
 const financialsRoutes = require("./routes/financials");
 const indexRoutes = require("./routes/index");
+const profileRoutes = require("./routes/profile");
 
 // ======================
 // SOCKET HANDLER
@@ -113,6 +114,7 @@ app.use("/", indexRoutes);
 app.use("/create-invite", createRoutes);
 app.use("/", authRoutes);
 app.use("/", updateRoutes);
+app.use("/", profileRoutes);
 app.use("/", milkRoutes);
 app.use("/financials", financialsRoutes);
 app.use("/dairy", newRoutes);
