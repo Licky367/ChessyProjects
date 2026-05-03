@@ -1,0 +1,35 @@
+<h2><%= batch.groupName %></h2>
+
+<p>Available: <%= batch.available %></p>
+<p>DOB: <%= batch.dob.toDateString() %></p>
+
+<h3>Deaths</h3>
+
+<form method="POST" action="/nursing/<%= batch._id %>/death">
+    <input name="count" type="number" placeholder="Dead">
+    <input name="cause" placeholder="Cause">
+    <button>Record</button>
+</form>
+
+<% batch.deaths.forEach(d => { %>
+    <div>
+        <p><%= d.count %> died - <%= d.cause %></p>
+    </div>
+<% }) %>
+
+<hr>
+
+<h3>Sell Poultry</h3>
+<form method="POST" action="/nursing/<%= batch._id %>/sell">
+    <input name="count" type="number">
+    <input name="amount" type="number">
+    <button>Sell</button>
+</form>
+
+<hr>
+
+<h3>Cage (Chicken only)</h3>
+<form method="POST" action="/nursing/<%= batch._id %>/cage">
+    <input name="perCage" type="number">
+    <button>Cage</button>
+</form>
