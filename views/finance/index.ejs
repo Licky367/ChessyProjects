@@ -1,0 +1,14 @@
+<h2>Finance</h2>
+
+<form action="/finance/add" method="POST">
+    <input type="number" name="amount" placeholder="Amount" required>
+    <input type="text" name="description" placeholder="Description">
+    <button>Add Investment</button>
+</form>
+
+<h3>Stats</h3>
+<p>Investment: <%= stats.investment %></p>
+<p>Poultry Sales: <%= stats.poultry %></p>
+<p>Egg Sales: <%= stats.eggs %></p>
+<p>Revenue: <%= stats.revenue %></p>
+<p>Profit: <%= stats.profit %></p>
