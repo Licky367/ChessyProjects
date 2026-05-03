@@ -1,6 +1,11 @@
 const NursingBatch = require("../models/NursingBatch");
+const Cage = require("../models/Cage");
+const EggStock = require("../models/EggStock");
 const financeService = require("./financeService");
 
+// =========================
+// CREATE BATCH FROM PURCHASE
+// =========================
 exports.createFromPurchase = async (data) => {
   return await NursingBatch.create({
     ...data,
@@ -9,18 +14,32 @@ exports.createFromPurchase = async (data) => {
   });
 };
 
+// =========================
+// GET ACTIVE BATCHES
+// =========================
 exports.getActiveBatches = async () => {
-  return await NursingBatch.find({ status: "active", available: { $gt: 0 } });
+  return await NursingBatch.find({
+    status: "active",
+    available: { $gt: 0 }
+  });
 };
 
+// =========================
+// GET SINGLE BATCH
+// =========================
 exports.getBatchById = async (id) => {
   return await NursingBatch.findById(id);
 };
 
+// =========================
+// RECORD DEATH
+// =========================
 exports.recordDeath = async ({ batchId, count, cause, user }) => {
   const batch = await NursingBatch.findById(batchId);
-
   if (!batch) throw new Error("Batch not found");
+
+  count = Number(count);
+  if (!count || count <= 0) throw new Error("Invalid death count");
 
   batch.available -= count;
 
@@ -37,14 +56,24 @@ exports.recordDeath = async ({ batchId, count, cause, user }) => {
   }
 
   await batch.save();
-
   return batch;
 };
 
+// =========================
+// SELL POULTRY
+// =========================
 exports.sellPoultry = async ({ batchId, count, amount, user }) => {
   const batch = await NursingBatch.findById(batchId);
-
   if (!batch) throw new Error("Batch not found");
+
+  count = Number(count);
+  amount = Number(amount);
+
+  if (!count || count <= 0) throw new Error("Invalid sell count");
+
+  if (count > batch.available) {
+    throw new Error("Not enough poultry available");
+  }
 
   batch.available -= count;
 
@@ -59,18 +88,22 @@ exports.sellPoultry = async ({ batchId, count, amount, user }) => {
     amount,
     quantity: count,
     batchId,
-    userId: user._id
+    userId: user._id,
+    poultryType: batch.poultryType
   });
 
   return batch;
 };
 
+// =========================
+// CAGE BATCH (CHICKEN ONLY)
+// =========================
 exports.cageBatch = async ({ batchId, perCage }) => {
-  const Cage = require("../models/Cage");
-
   const batch = await NursingBatch.findById(batchId);
-
   if (!batch) throw new Error("Batch not found");
+
+  perCage = Number(perCage);
+  if (!perCage || perCage <= 0) throw new Error("Invalid perCage value");
 
   if (batch.poultryType !== "chicken") {
     throw new Error("Only chicken can be caged");
@@ -79,12 +112,14 @@ exports.cageBatch = async ({ batchId, perCage }) => {
   const cages = Math.ceil(batch.available / perCage);
 
   for (let i = 0; i < cages; i++) {
-    const count = i === cages - 1
-      ? batch.available - (perCage * i)
-      : perCage;
+    const count =
+      i === cages - 1
+        ? batch.available - perCage * i
+        : perCage;
 
     await Cage.create({
       cageName: `Cage ${i + 1}`,
+      poultryType: "chicken",
       total: count,
       available: count,
       dob: batch.dob
@@ -95,6 +130,34 @@ exports.cageBatch = async ({ batchId, perCage }) => {
   batch.status = "caged";
 
   await batch.save();
+  return true;
+};
+
+// =========================
+// COLLECT EGGS (NEW FUNCTION)
+// =========================
+exports.collectEggs = async ({ batchId, eggs, poultryType }) => {
+  const batch = await NursingBatch.findById(batchId);
+  if (!batch) throw new Error("Batch not found");
+
+  eggs = Number(eggs);
+  if (!eggs || eggs <= 0) throw new Error("Invalid egg count");
+
+  // Ensure poultry match
+  if (!poultryType) {
+    throw new Error("Poultry type is required");
+  }
+
+  // Optional safety: ensure batch matches
+  if (batch.poultryType !== poultryType) {
+    throw new Error("Poultry type mismatch");
+  }
+
+  await EggStock.findOneAndUpdate(
+    { poultryType },
+    { $inc: { totalAvailable: eggs } },
+    { upsert: true }
+  );
 
   return true;
 };
