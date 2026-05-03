@@ -8,5 +8,6 @@ router.get("/:id", controller.renderCageDetails);
 
 router.post("/:id/eggs", controller.collectEggs);
 router.post("/:id/sell", controller.sellChicken);
+router.post("/:id/dead", cageController.recordDeadChicken);
 
 module.exports = router;
