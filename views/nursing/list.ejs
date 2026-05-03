@@ -1,0 +1,25 @@
+<h2>Nursing</h2>
+
+<form action="/nursing/purchase" method="POST">
+    <input name="groupName" placeholder="Group Name">
+    <input name="total" type="number" placeholder="Number">
+
+    <select name="poultryType">
+        <option>chicken</option>
+        <option>duck</option>
+    </select>
+
+    <input type="date" name="dob">
+
+    <button>Add Purchase</button>
+</form>
+
+<hr>
+
+<% batches.forEach(b => { %>
+    <div>
+        <a href="/nursing/<%= b._id %>">
+            <%= b.groupName %> (<%= b.available %>)
+        </a>
+    </div>
+<% }) %>
