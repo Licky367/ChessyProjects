@@ -1,14 +1,29 @@
 <h2><%= batch.groupName %></h2>
 
 <p>Available: <%= batch.available %></p>
+<p>Poultry Type: <%= batch.poultryType %></p>
 <p>DOB: <%= batch.dob.toDateString() %></p>
 
-<h3>Deaths</h3>
+<hr>
 
+<h3>Collect Eggs</h3>
+<form method="POST" action="/nursing/<%= batch._id %>/eggs">
+    
+    <!-- Poultry type is tied to this batch -->
+    <input type="hidden" name="poultryType" value="<%= batch.poultryType %>">
+
+    <input name="eggs" type="number" min="1" placeholder="Number of eggs" required>
+
+    <button type="submit">Collect Eggs</button>
+</form>
+
+<hr>
+
+<h3>Deaths</h3>
 <form method="POST" action="/nursing/<%= batch._id %>/death">
-    <input name="count" type="number" placeholder="Dead">
-    <input name="cause" placeholder="Cause">
-    <button>Record</button>
+    <input name="count" type="number" placeholder="Dead" min="1" required>
+    <input name="cause" placeholder="Cause" required>
+    <button type="submit">Record</button>
 </form>
 
 <% batch.deaths.forEach(d => { %>
@@ -21,15 +36,15 @@
 
 <h3>Sell Poultry</h3>
 <form method="POST" action="/nursing/<%= batch._id %>/sell">
-    <input name="count" type="number">
-    <input name="amount" type="number">
-    <button>Sell</button>
+    <input name="count" type="number" min="1" required>
+    <input name="amount" type="number" min="0" required>
+    <button type="submit">Sell</button>
 </form>
 
 <hr>
 
 <h3>Cage (Chicken only)</h3>
 <form method="POST" action="/nursing/<%= batch._id %>/cage">
-    <input name="perCage" type="number">
-    <button>Cage</button>
+    <input name="perCage" type="number" min="1" required>
+    <button type="submit">Cage</button>
 </form>
