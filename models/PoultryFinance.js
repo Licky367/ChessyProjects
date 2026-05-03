@@ -1,44 +1,67 @@
 const mongoose = require("mongoose");
 
+const VALID_POULTRY_TYPES = [
+  "chicken",
+  "duck",
+  "turkey",
+  "goose",
+  "quail",
+  "other"
+];
+
 const poultryFinanceSchema = new mongoose.Schema(
   {
+    // Type of financial record
     category: {
       type: String,
-      enum: ["investment", "poultry_sale", "egg_sale", "expense", "feed_purchase", "medicine_purchase"],
+      enum: ["investment", "poultry_sale", "egg_sale"],
       required: true
     },
 
-    amount: { type: Number, required: true, min: 0 },
-
-    quantity: { type: Number, default: 0, min: 0 },
-
-    direction: {
+    // Poultry type involved in transaction (critical for analytics)
+    poultryType: {
       type: String,
-      enum: ["income", "expense"],
-      required: true
+      enum: VALID_POULTRY_TYPES,
+      required: false,
+      trim: true
     },
 
-    /**
-     * NEW: date normalization for grouping reports
-     */
-    transactionDate: {
-      type: Date,
-      default: Date.now,
-      index: true
+    // Monetary value of transaction
+    amount: {
+      type: Number,
+      required: true,
+      min: 0
     },
 
-    description: String,
+    // Quantity of items (birds or eggs)
+    quantity: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
 
+    // Optional human-readable note
+    description: {
+      type: String,
+      trim: true
+    },
+
+    // Related batch (if applicable)
+    relatedBatch: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "NursingBatch"
+    },
+
+    // User who recorded the transaction
     recordedBy: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true
+      ref: "User"
     }
   },
   { timestamps: true }
 );
 
-poultryFinanceSchema.index({ transactionDate: 1 });
-poultryFinanceSchema.index({ category: 1 });
+// Index for faster financial reporting by category + poultry type
+poultryFinanceSchema.index({ category: 1, poultryType: 1 });
 
 module.exports = mongoose.model("PoultryFinance", poultryFinanceSchema);
