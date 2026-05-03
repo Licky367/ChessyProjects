@@ -1,20 +1,16 @@
 const service = require("../services/poultryStatsService");
 
-exports.renderStatsPage = async (req, res) => {
-  const date = req.query.date || new Date();
-  const mode = req.query.mode || "eggs"; // eggs | sales
+exports.renderStats = async (req, res) => {
+  const { date, type } = req.query;
 
-  let data;
-
-  if (mode === "sales") {
-    data = await service.getEggSalesStats(date);
-  } else {
-    data = await service.getEggCollectionStats(date);
-  }
+  const data = await service.getStats({
+    date,
+    type: type || "eggs"
+  });
 
   res.render("poultryStats", {
-    data,
-    date,
-    mode
+    ...data,
+    selectedDate: date,
+    selectedType: type || "eggs"
   });
 };
