@@ -1,57 +1,40 @@
-<% layout('layout', { title: 'Poultry Statistics' }) %>
+<h2>Poultry Analytics Dashboard</h2>
 
-<div class="container">
-
-<h2>Poultry Statistics Dashboard</h2>
-
-<!-- FILTER -->
 <form method="GET" action="/poultry-stats">
-  <input type="date" name="date" value="<%= date ? new Date(date).toISOString().split('T')[0] : '' %>">
+    <input type="date" name="date" value="<%= selectedDate || '' %>">
 
-  <select name="mode">
-    <option value="eggs" <%= mode === 'eggs' ? 'selected' : '' %>>Eggs Collected</option>
-    <option value="sales" <%= mode === 'sales' ? 'selected' : '' %>>Egg Sales Income</option>
-  </select>
+    <select name="type">
+        <option value="eggs" <%= selectedType === "eggs" ? "selected" : "" %>>Eggs Collected</option>
+        <option value="sales" <%= selectedType === "sales" ? "selected" : "" %>>Egg Sales Revenue</option>
+    </select>
 
-  <button type="submit">Filter</button>
+    <button>Filter</button>
 </form>
 
 <hr>
 
-<!-- TABLE -->
-<table border="1" width="100%" cellpadding="10">
-  <thead>
-    <tr>
-      <th>Poultry Type</th>
-      <th>Day Total</th>
-      <th>Month Total</th>
-      <th>Year Total</th>
-      <th>Overall Total</th>
-    </tr>
-  </thead>
+<table border="1" cellpadding="10">
+    <thead>
+        <tr>
+            <th>Poultry Type</th>
+            <th>Day</th>
+            <th>Month</th>
+            <th>Year</th>
+        </tr>
+    </thead>
 
-  <tbody>
-    <% if (Array.isArray(data)) { %>
-      <% data.forEach(row => { %>
-        <tr>
-          <td><%= row.poultryType %></td>
-          <td><%= row.dayTotal %></td>
-          <td><%= row.monthTotal %></td>
-          <td><%= row.yearTotal %></td>
-          <td><%= row.overall %></td>
-        </tr>
-      <% }) %>
-    <% } else { %>
-        <tr>
-          <td colspan="5" style="text-align:center">
-            Day: <%= data.dayTotal %> |
-            Month: <%= data.monthTotal %> |
-            Year: <%= data.yearTotal %> |
-            Overall: <%= data.overall %>
-          </td>
-        </tr>
-    <% } %>
-  </tbody>
+    <tbody>
+        <% rows.forEach(r => { %>
+            <tr>
+                <td><%= r.poultryType %></td>
+                <td><%= r.day %></td>
+                <td><%= r.month %></td>
+                <td><%= r.year %></td>
+            </tr>
+        <% }) %>
+    </tbody>
 </table>
 
-</div>
+<hr>
+
+<h3>Total: <%= total %></h3>
