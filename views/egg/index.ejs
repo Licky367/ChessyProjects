@@ -1,12 +1,45 @@
-<h2>Eggs</h2>
+<h2>Eggs Inventory</h2>
 
-<p>Total: <%= stock ? stock.totalAvailable : 0 %></p>
+<!-- Poultry Type Filter -->
+<form method="GET" action="/eggs">
+    <select name="poultryType" required>
+        <option value="">Select Poultry Type</option>
+        <option value="chicken" <%= selectedType === "chicken" ? "selected" : "" %>>Chicken</option>
+        <option value="duck" <%= selectedType === "duck" ? "selected" : "" %>>Duck</option>
+        <option value="turkey" <%= selectedType === "turkey" ? "selected" : "" %>>Turkey</option>
+        <option value="goose" <%= selectedType === "goose" ? "selected" : "" %>>Goose</option>
+        <option value="quail" <%= selectedType === "quail" ? "selected" : "" %>>Quail</option>
+        <option value="other" <%= selectedType === "other" ? "selected" : "" %>>Other</option>
+    </select>
+
+    <button type="submit">Filter</button>
+</form>
+
+<hr>
+
+<!-- Stock Display -->
+<p>
+    Total Available Eggs:
+    <strong><%= stock ? stock.totalAvailable : 0 %></strong>
+</p>
+
+<p>
+    Poultry Type:
+    <strong><%= selectedType || "Not selected" %></strong>
+</p>
+
+<hr>
+
+<!-- Sell Eggs -->
+<h3>Sell Eggs</h3>
 
 <form method="POST" action="/eggs/sell">
-    <input name="poultryType" value="chicken" hidden>
 
-    <input name="quantity" type="number" placeholder="Eggs">
-    <input name="amount" type="number" placeholder="Amount">
+    <!-- IMPORTANT: selected type passed to backend -->
+    <input type="hidden" name="poultryType" value="<%= selectedType %>">
 
-    <button>Sell</button>
+    <input name="quantity" type="number" min="1" placeholder="Eggs" required>
+    <input name="amount" type="number" min="0" placeholder="Amount" required>
+
+    <button type="submit">Sell</button>
 </form>
