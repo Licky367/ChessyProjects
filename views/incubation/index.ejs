@@ -1,0 +1,28 @@
+<h2>Incubation</h2>
+
+<form action="/incubation/create" method="POST">
+    <input name="groupName" placeholder="Group Name" required>
+
+    <select name="poultryType">
+        <option>chicken</option>
+        <option>duck</option>
+        <option>goose</option>
+    </select>
+
+    <input type="number" name="eggCount" placeholder="Eggs" required>
+
+    <button>Create</button>
+</form>
+
+<hr>
+
+<% incubations.forEach(i => { %>
+    <div>
+        <p><%= i.groupName %> - <%= i.eggCount %></p>
+
+        <form action="/incubation/end/<%= i._id %>" method="POST">
+            <input name="successfulHatches" placeholder="Hatched">
+            <button>End</button>
+        </form>
+    </div>
+<% }) %>
