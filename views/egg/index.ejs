@@ -1,0 +1,12 @@
+<h2>Eggs</h2>
+
+<p>Total: <%= stock ? stock.totalAvailable : 0 %></p>
+
+<form method="POST" action="/eggs/sell">
+    <input name="poultryType" value="chicken" hidden>
+
+    <input name="quantity" type="number" placeholder="Eggs">
+    <input name="amount" type="number" placeholder="Amount">
+
+    <button>Sell</button>
+</form>
