@@ -4,13 +4,23 @@
 
 <h3>Collect Eggs</h3>
 <form method="POST" action="/cage/<%= cage._id %>/eggs">
-    <input name="eggs" type="number">
-    <button>Add</button>
+    <input name="eggs" type="number" min="0" required>
+    <button type="submit">Add</button>
 </form>
+
+<hr>
 
 <h3>Sell Chicken</h3>
 <form method="POST" action="/cage/<%= cage._id %>/sell">
-    <input name="count" type="number">
-    <input name="amount" type="number">
-    <button>Sell</button>
+    <input name="count" type="number" min="1" required placeholder="Number sold">
+    <input name="amount" type="number" min="0" required placeholder="Amount">
+    <button type="submit">Sell</button>
+</form>
+
+<hr>
+
+<h3>Record Dead Chicken</h3>
+<form method="POST" action="/cage/<%= cage._id %>/dead">
+    <input name="count" type="number" min="1" required placeholder="Number dead">
+    <button type="submit">Record Dead</button>
 </form>
