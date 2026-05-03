@@ -1,21 +1,26 @@
-// services/cageService.js
-
 const Cage = require("../models/Cage");
 const EggStock = require("../models/EggStock");
-const financeService = require("./financeService");
+const EggCollectionLog = require("../models/EggCollectionLog");
+const PoultryFinance = require("../models/PoultryFinance");
 
 const POULTRY_TYPE = "chicken";
 
+// =========================
+// GET CAGES
+// =========================
 exports.getCages = async () => {
   return await Cage.find({ available: { $gt: 0 } });
 };
 
+// =========================
+// GET CAGE
+// =========================
 exports.getCageById = async (id) => {
   return await Cage.findById(id);
 };
 
 // =========================
-// COLLECT EGGS
+// COLLECT EGGS (CHICKEN ONLY)
 // =========================
 exports.collectEggs = async ({ cageId, eggs }) => {
   const cage = await Cage.findById(cageId);
@@ -24,14 +29,22 @@ exports.collectEggs = async ({ cageId, eggs }) => {
   eggs = Number(eggs);
   if (!eggs || eggs <= 0) throw new Error("Invalid eggs value");
 
-  cage.eggsAvailable += eggs;
-  await cage.save();
-
+  // ALWAYS chicken
   await EggStock.findOneAndUpdate(
     { poultryType: POULTRY_TYPE },
     { $inc: { totalAvailable: eggs } },
     { upsert: true }
   );
+
+  await EggCollectionLog.create({
+    poultryType: POULTRY_TYPE,
+    quantity: eggs,
+    sourceBatch: null,
+    collectedBy: null
+  });
+
+  cage.eggsAvailable += eggs;
+  await cage.save();
 
   return cage;
 };
@@ -61,11 +74,13 @@ exports.sellChicken = async ({ cageId, count, amount, user }) => {
     await cage.save();
   }
 
-  await financeService.recordPoultrySale({
+  await PoultryFinance.create({
+    category: "poultry_sale",
+    poultryType: POULTRY_TYPE,
     amount,
     quantity: count,
-    poultryType: POULTRY_TYPE,
-    userId: user._id
+    relatedBatch: null,
+    recordedBy: user._id
   });
 
   return true;
@@ -74,7 +89,7 @@ exports.sellChicken = async ({ cageId, count, amount, user }) => {
 // =========================
 // DEAD CHICKEN (LOSS)
 // =========================
-exports.recordDeadChicken = async ({ cageId, count, user }) => {
+exports.recordDeadChicken = async ({ cageId, count }) => {
   const cage = await Cage.findById(cageId);
   if (!cage) throw new Error("Cage not found");
 
@@ -93,5 +108,5 @@ exports.recordDeadChicken = async ({ cageId, count, user }) => {
     await cage.save();
   }
 
-  return true;
+  return cage;
 };
