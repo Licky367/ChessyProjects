@@ -34,19 +34,13 @@
         <% }) %>
     </tbody>
 
-    <!-- TOTAL ROW -->
+    <!-- GRAND TOTAL ROW (NOW FROM BACKEND, NOT REDUCED IN VIEW) -->
     <tfoot>
         <tr>
             <th>Total</th>
-            <th>
-                <%= rows.reduce((a, b) => a + b.day, 0) %>
-            </th>
-            <th>
-                <%= rows.reduce((a, b) => a + b.month, 0) %>
-            </th>
-            <th>
-                <%= rows.reduce((a, b) => a + b.year, 0) %>
-            </th>
+            <th><%= grandTotal.day %></th>
+            <th><%= grandTotal.month %></th>
+            <th><%= grandTotal.year %></th>
         </tr>
     </tfoot>
 </table>
