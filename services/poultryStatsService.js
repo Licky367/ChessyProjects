@@ -1,86 +1,87 @@
-const EggStock = require("../models/EggStock");
+const EggCollectionLog = require("../models/EggCollectionLog");
 const PoultryFinance = require("../models/PoultryFinance");
 
-function getDateRange(date) {
-  const d = new Date(date);
+const TYPES = ["chicken", "duck", "turkey", "goose", "quail", "other"];
 
-  const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const dayEnd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+const getRanges = (date) => {
+  const d = date ? new Date(date) : new Date();
+
+  const dayStart = new Date(d.setHours(0, 0, 0, 0));
+  const dayEnd = new Date(d.setHours(23, 59, 59, 999));
 
   const monthStart = new Date(d.getFullYear(), d.getMonth(), 1);
-  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+  const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0);
 
   const yearStart = new Date(d.getFullYear(), 0, 1);
-  const yearEnd = new Date(d.getFullYear() + 1, 0, 1);
+  const yearEnd = new Date(d.getFullYear(), 11, 31);
 
   return { dayStart, dayEnd, monthStart, monthEnd, yearStart, yearEnd };
-}
-
-exports.getEggCollectionStats = async (date) => {
-  const { dayStart, dayEnd, monthStart, monthEnd, yearStart, yearEnd } = getDateRange(date);
-
-  const stocks = await EggStock.find();
-
-  let results = [];
-
-  for (const stock of stocks) {
-    const daily = stock.dailyRecords || [];
-
-    const dayTotal = daily
-      .filter(d => d.date >= dayStart && d.date < dayEnd)
-      .reduce((a, b) => a + b.collected, 0);
-
-    const monthTotal = daily
-      .filter(d => d.date >= monthStart && d.date < monthEnd)
-      .reduce((a, b) => a + b.collected, 0);
-
-    const yearTotal = daily
-      .filter(d => d.date >= yearStart && d.date < yearEnd)
-      .reduce((a, b) => a + b.collected, 0);
-
-    const overall = stock.totalCollected;
-
-    results.push({
-      poultryType: stock.poultryType,
-      dayTotal,
-      monthTotal,
-      yearTotal,
-      overall
-    });
-  }
-
-  return results;
 };
 
-exports.getEggSalesStats = async (date) => {
-  const { dayStart, dayEnd, monthStart, monthEnd, yearStart, yearEnd } = getDateRange(date);
+exports.getStats = async ({ date, type }) => {
+  const ranges = getRanges(date);
 
-  const baseFilter = { category: "egg_sale", direction: "income" };
+  const rows = [];
+  let total = 0;
 
-  const day = await PoultryFinance.aggregate([
-    { $match: { ...baseFilter, transactionDate: { $gte: dayStart, $lt: dayEnd } } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+  for (const poultryType of TYPES) {
+    let day = 0;
+    let month = 0;
+    let year = 0;
 
-  const month = await PoultryFinance.aggregate([
-    { $match: { ...baseFilter, transactionDate: { $gte: monthStart, $lt: monthEnd } } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+    if (type === "eggs") {
+      const dayData = await EggCollectionLog.find({
+        poultryType,
+        createdAt: { $gte: ranges.dayStart, $lte: ranges.dayEnd }
+      });
 
-  const year = await PoultryFinance.aggregate([
-    { $match: { ...baseFilter, transactionDate: { $gte: yearStart, $lt: yearEnd } } },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+      const monthData = await EggCollectionLog.find({
+        poultryType,
+        createdAt: { $gte: ranges.monthStart, $lte: ranges.monthEnd }
+      });
 
-  const overall = await PoultryFinance.aggregate([
-    { $match: baseFilter },
-    { $group: { _id: null, total: { $sum: "$amount" } } }
-  ]);
+      const yearData = await EggCollectionLog.find({
+        poultryType,
+        createdAt: { $gte: ranges.yearStart, $lte: ranges.yearEnd }
+      });
 
-  return {
-    dayTotal: day[0]?.total || 0,
-    monthTotal: month[0]?.total || 0,
-    yearTotal: year[0]?.total || 0,
-    overall: overall[0]?.total || 0
-  };
+      day = dayData.reduce((a, b) => a + b.quantity, 0);
+      month = monthData.reduce((a, b) => a + b.quantity, 0);
+      year = yearData.reduce((a, b) => a + b.quantity, 0);
+
+      total += year;
+    }
+
+    if (type === "sales") {
+      const base = {
+        category: "egg_sale",
+        poultryType
+      };
+
+      const dayData = await PoultryFinance.find({
+        ...base,
+        createdAt: { $gte: ranges.dayStart, $lte: ranges.dayEnd }
+      });
+
+      const monthData = await PoultryFinance.find({
+        ...base,
+        createdAt: { $gte: ranges.monthStart, $lte: ranges.monthEnd }
+      });
+
+      const yearData = await PoultryFinance.find({
+        ...base,
+        createdAt: { $gte: ranges.yearStart, $lte: ranges.yearEnd }
+      });
+
+      day = dayData.reduce((a, b) => a + b.amount, 0);
+      month = monthData.reduce((a, b) => a + b.amount, 0);
+      year = yearData.reduce((a, b) => a + b.amount, 0);
+
+      total += year;
+    }
+
+    rows.push({ poultryType, day, month, year });
+  }
+
+  return { rows, total };
 };
