@@ -1,0 +1,16 @@
+<h2><%= cage.cageName %></h2>
+
+<p>Available: <%= cage.available %></p>
+
+<h3>Collect Eggs</h3>
+<form method="POST" action="/cage/<%= cage._id %>/eggs">
+    <input name="eggs" type="number">
+    <button>Add</button>
+</form>
+
+<h3>Sell Chicken</h3>
+<form method="POST" action="/cage/<%= cage._id %>/sell">
+    <input name="count" type="number">
+    <input name="amount" type="number">
+    <button>Sell</button>
+</form>
