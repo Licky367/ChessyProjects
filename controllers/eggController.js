@@ -1,13 +1,26 @@
 const eggService = require("../services/eggService");
 
+// =========================
+// RENDER EGG PAGE (FILTERED)
+// =========================
 exports.renderEggPage = async (req, res) => {
-  const { type } = req.query;
+  try {
+    const poultryType = req.query.poultryType || req.query.type || "chicken";
 
-  const stock = await eggService.getEggStock(type || "chicken");
+    const stock = await eggService.getEggStock(poultryType);
 
-  res.render("egg/index", { stock, type });
+    res.render("egg/index", {
+      stock,
+      selectedType: poultryType
+    });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 };
 
+// =========================
+// SELL EGGS
+// =========================
 exports.sellEggs = async (req, res) => {
   try {
     const { poultryType, quantity, amount } = req.body;
@@ -19,8 +32,8 @@ exports.sellEggs = async (req, res) => {
       user: req.user
     });
 
-    res.redirect("/eggs");
+    res.redirect(`/eggs?poultryType=${poultryType}`);
   } catch (err) {
-    res.send(err.message);
+    res.status(400).send(err.message);
   }
 };
