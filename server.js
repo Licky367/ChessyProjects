@@ -18,6 +18,12 @@ const financialsRoutes = require("./routes/financials");
 const indexRoutes = require("./routes/index");
 const profileRoutes = require("./routes/profile");
 const accountsRoutes = require("./routes/accounts");
+const poultryStatsRoutes = require("./routes/poultryStats");
+const eggRoutes = require("./routes/eggRoutes"); // if separated
+const cageRoutes = require("./routes/cageRoutes");
+const nursingRoutes = require("./routes/nursingRoutes");
+const financeRoutes = require("./routes/financeRoutes")
+const incubationRoutes = require("./routes/incubationRoutes")
 
 // ======================
 // SOCKET HANDLER
@@ -120,6 +126,12 @@ app.use("/", milkRoutes);
 app.use("/accounts", accountsRoutes);
 app.use("/financials", financialsRoutes);
 app.use("/dairy", newRoutes);
+app.use("/poultry-stats", poultryStatsRoutes);
+app.use("/eggs", eggRoutes);
+app.use("/cage", cageRoutes);
+app.use("/nursing", nursingRoutes);
+app.use("/incubation", incubationRoutes);
+app.use("/finance", financeRoutes);
 
 // ======================
 // 404 HANDLER
