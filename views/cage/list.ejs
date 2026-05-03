@@ -1,0 +1,9 @@
+<h2>Cages</h2>
+
+<% cages.forEach(c => { %>
+    <div>
+        <a href="/cage/<%= c._id %>">
+            <%= c.cageName %> (<%= c.available %>)
+        </a>
+    </div>
+<% }) %>
