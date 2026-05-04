@@ -125,59 +125,6 @@ font-size:14px;
 background:rgba(255,255,255,.15);
 }
 
-/* TOC STYLE DROPDOWN */
-.dropdown-section{
-margin-top:8px;
-}
-
-.dropdown-header{
-color:#fff;
-padding:10px;
-cursor:pointer;
-display:flex;
-justify-content:space-between;
-align-items:center;
-border-radius:6px;
-font-size:14px;
-opacity:.95;
-}
-
-.dropdown-header:hover{
-background:rgba(255,255,255,.12);
-}
-
-.dropdown-header .arrow{
-transition:.2s ease;
-font-size:16px;
-}
-
-.dropdown-section.active .arrow{
-transform:rotate(90deg);
-}
-
-.dropdown-content{
-display:none;
-margin-top:4px;
-padding-left:10px;
-border-left:2px solid rgba(255,255,255,.2);
-}
-
-.dropdown-section.active .dropdown-content{
-display:block;
-}
-
-.dropdown-content a{
-font-size:13px;
-padding:8px 10px;
-margin:2px 0;
-border-radius:4px;
-opacity:.9;
-}
-
-.dropdown-content a:hover{
-background:rgba(255,255,255,.12);
-}
-
 /* OVERLAY */
 .overlay{
 position:fixed;
@@ -267,38 +214,9 @@ if(user){
     <a href="/">🏠 Home</a>
     <a href="/create-staff">👥 Add Staff</a>
 
-    <!-- DAIRY -->
-    <div class="dropdown-section">
-      <div class="dropdown-header" onclick="toggleDropdown(this)">
-        🐄 Dairy Projects
-        <span class="arrow">›</span>
-      </div>
-      <div class="dropdown-content">
-        <a href="/dairy/new">Add Project</a>
-        <a href="/dairy/projects">View Projects</a>
-        <a href="/structures">Facilities</a>
-        <a href="/milk">Production</a>
-        <a href="/sales">Sales</a>
-        <a href="/milk/stats">Statistics</a>
-        <a href="/financials/dashboard">Financials</a>
-      </div>
-    </div>
-
-    <!-- POULTRY -->
-    <div class="dropdown-section">
-      <div class="dropdown-header" onclick="toggleDropdown(this)">
-        🐔 Poultry Projects
-        <span class="arrow">›</span>
-      </div>
-      <div class="dropdown-content">
- <a href="/finance">Make Investment</a>
-        <a href="/incubation">Start Incubation</a>
-        <a href="/nursing">View Poultry Progress</a>
- <a href="/cage">View Caged Chicken</a>
- <a href="/poultry-stats">Poultry Analytics</a>
- <a href="/eggs">Sell Eggs</a>
-      </div>
-    </div>
+    <a href="/dashboard/dairy">🐄 Dairy Dashboard</a>
+    <a href="/dashboard/poultry">🐔 Poultry Dashboard</a>
+    <a href="/dashboard/agriculture">🌾 Agriculture Dashboard</a>
 
   <% } else if(user && user.role === "dairyWorker"){ %>
 
@@ -308,11 +226,6 @@ if(user){
     <a href="/milk">🥛 Production</a>
     <a href="/sales">💰 Sales</a>
 
-  <% } %>
-
-</div>
-  </div>
-
   <% } else if(user && user.role === "poultryWorker"){ %>
 
     <a href="/">🏠 Home</a>
@@ -320,8 +233,7 @@ if(user){
     <a href="/nursing">View Poultry Progress</a>
     <a href="/cage">View Caged chicken</a>
     <a href="/poultry-stats">Track Poduction</a>
- <a href="/eggs">Sell Eggs</a>
-
+    <a href="/eggs">Sell Eggs</a>
 
   <% } %>
 
@@ -354,11 +266,6 @@ function openSidebar(){
 function closeSidebar(){
   sidebar.classList.remove("active");
   overlay.classList.remove("active");
-}
-
-function toggleDropdown(el){
-  const parent = el.parentElement;
-  parent.classList.toggle("active");
 }
 
 function toggleProfile(e){
