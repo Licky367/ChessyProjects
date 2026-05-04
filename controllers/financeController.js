@@ -12,7 +12,10 @@ exports.renderFinancePage = async (req, res) => {
       new Date().getMonth()
     );
 
-    res.render("finance/index", { stats, records });
+    res.render("finance/index", {
+      stats,
+      records
+    });
   } catch (err) {
     res.status(500).send(err.message);
   }
@@ -46,6 +49,46 @@ exports.reinvest = async (req, res) => {
     const { amount, poultryType, description } = req.body;
 
     await financeService.reinvestProfit({
+      amount,
+      poultryType,
+      description,
+      userId: req.user._id
+    });
+
+    res.redirect("/finance");
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+};
+
+// =========================
+// PAY WORKERS
+// =========================
+exports.payWorkers = async (req, res) => {
+  try {
+    const { amount, poultryType, description } = req.body;
+
+    await financeService.payWorkers({
+      amount,
+      poultryType,
+      description,
+      userId: req.user._id
+    });
+
+    res.redirect("/finance");
+  } catch (err) {
+    res.status(400).send(err.message);
+  }
+};
+
+// =========================
+// CONSUMPTION
+// =========================
+exports.consumption = async (req, res) => {
+  try {
+    const { amount, poultryType, description } = req.body;
+
+    await financeService.addConsumption({
       amount,
       poultryType,
       description,
