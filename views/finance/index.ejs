@@ -1,21 +1,23 @@
 <h2>Finance</h2>
 
 <!-- ========================= -->
-<!-- ADD INVESTMENT FORM -->
+<!-- ADD INVESTMENT -->
 <!-- ========================= -->
 <h3>Add Investment</h3>
 
 <form action="/finance/add" method="POST">
     <input type="number" name="amount" placeholder="Amount" min="0" required>
 
+    <input type="hidden" name="mode" value="investment">
+
     <select name="poultryType" required>
         <option value="">Select Poultry Type</option>
-        <option value="chicken">Chicken</option>
-        <option value="duck">Duck</option>
-        <option value="turkey">Turkey</option>
-        <option value="goose">Goose</option>
-        <option value="quail">Quail</option>
-        <option value="other">Other</option>
+
+        <% Object.keys(profitByType).forEach(type => { %>
+            <% if (profitByType[type] > 0) { %>
+                <option value="<%= type %>"><%= type %></option>
+            <% } %>
+        <% }) %>
     </select>
 
     <input type="text" name="description" placeholder="Description">
@@ -26,31 +28,85 @@
 <hr>
 
 <!-- ========================= -->
-<!-- REINVEST FORM (ONLY IF PROFIT > 0) -->
+<!-- REINVEST PROFIT -->
 <!-- ========================= -->
-<% if (stats.profit > 0) { %>
-    <h3>Reinvest Profit</h3>
+<h3>Reinvest Profit</h3>
 
-    <form action="/finance/reinvest" method="POST">
-        <input type="number" name="amount" placeholder="Amount" min="0" max="<%= stats.profit %>" required>
+<form action="/finance/reinvest" method="POST">
+    <input type="number" name="amount" placeholder="Amount" min="0" required>
 
-        <select name="poultryType" required>
-            <option value="">Select Poultry Type</option>
-            <option value="chicken">Chicken</option>
-            <option value="duck">Duck</option>
-            <option value="turkey">Turkey</option>
-            <option value="goose">Goose</option>
-            <option value="quail">Quail</option>
-            <option value="other">Other</option>
-        </select>
+    <input type="hidden" name="mode" value="reinvest">
 
-        <input type="text" name="description" placeholder="Description">
+    <select name="poultryType" required>
+        <option value="">Select Poultry Type</option>
 
-        <button type="submit">Reinvest</button>
-    </form>
+        <% Object.keys(profitByType).forEach(type => { %>
+            <% if (profitByType[type] > 0) { %>
+                <option value="<%= type %>"><%= type %></option>
+            <% } %>
+        <% }) %>
+    </select>
 
-    <hr>
-<% } %>
+    <input type="text" name="description" placeholder="Description">
+
+    <button type="submit">Reinvest</button>
+</form>
+
+<hr>
+
+<!-- ========================= -->
+<!-- PAY WORKERS -->
+<!-- ========================= -->
+<h3>Pay Workers</h3>
+
+<form action="/finance/pay-workers" method="POST">
+    <input type="number" name="amount" placeholder="Amount" min="0" required>
+
+    <input type="hidden" name="mode" value="pay_workers">
+
+    <select name="poultryType" required>
+        <option value="">Select Poultry Type</option>
+
+        <% Object.keys(profitByType).forEach(type => { %>
+            <% if (profitByType[type] > 0) { %>
+                <option value="<%= type %>"><%= type %></option>
+            <% } %>
+        <% }) %>
+    </select>
+
+    <input type="text" name="description" placeholder="Description">
+
+    <button type="submit">Pay Workers</button>
+</form>
+
+<hr>
+
+<!-- ========================= -->
+<!-- CONSUMPTION -->
+<!-- ========================= -->
+<h3>Consumption</h3>
+
+<form action="/finance/consumption" method="POST">
+    <input type="number" name="amount" placeholder="Amount" min="0" required>
+
+    <input type="hidden" name="mode" value="consumption">
+
+    <select name="poultryType" required>
+        <option value="">Select Poultry Type</option>
+
+        <% Object.keys(profitByType).forEach(type => { %>
+            <% if (profitByType[type] > 0) { %>
+                <option value="<%= type %>"><%= type %></option>
+            <% } %>
+        <% }) %>
+    </select>
+
+    <input type="text" name="description" placeholder="Description">
+
+    <button type="submit">Add Consumption</button>
+</form>
+
+<hr>
 
 <!-- ========================= -->
 <!-- STATS -->
