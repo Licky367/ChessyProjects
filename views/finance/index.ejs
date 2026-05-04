@@ -1,10 +1,24 @@
 <h2>Finance</h2>
 
 <form action="/finance/add" method="POST">
-    <input type="number" name="amount" placeholder="Amount" required>
+    <input type="number" name="amount" placeholder="Amount" min="0" required>
+
+    <select name="poultryType" required>
+        <option value="">Select Poultry Type</option>
+        <option value="chicken">Chicken</option>
+        <option value="duck">Duck</option>
+        <option value="turkey">Turkey</option>
+        <option value="goose">Goose</option>
+        <option value="quail">Quail</option>
+        <option value="other">Other</option>
+    </select>
+
     <input type="text" name="description" placeholder="Description">
-    <button>Add Investment</button>
+
+    <button type="submit">Add Investment</button>
 </form>
+
+<hr>
 
 <h3>Stats</h3>
 <p>Investment: <%= stats.investment %></p>
