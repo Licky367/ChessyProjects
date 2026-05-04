@@ -5,7 +5,10 @@
 
     <select name="type">
         <option value="eggs" <%= selectedType === "eggs" ? "selected" : "" %>>Eggs Collected</option>
-        <option value="sales" <%= selectedType === "sales" ? "selected" : "" %>>Egg Sales Revenue</option>
+        <option value="egg_sales" <%= selectedType === "egg_sales" ? "selected" : "" %>>Egg Sales Revenue</option>
+        <option value="poultry_sales" <%= selectedType === "poultry_sales" ? "selected" : "" %>>Poultry Sales Revenue</option>
+        <option value="total_revenue" <%= selectedType === "total_revenue" ? "selected" : "" %>>Total Revenue</option>
+        <option value="profit" <%= selectedType === "profit" ? "selected" : "" %>>Profit</option>
     </select>
 
     <button>Filter</button>
@@ -34,7 +37,6 @@
         <% }) %>
     </tbody>
 
-    <!-- GRAND TOTAL ROW (NOW FROM BACKEND, NOT REDUCED IN VIEW) -->
     <tfoot>
         <tr>
             <th>Total</th>
