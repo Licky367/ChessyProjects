@@ -1,5 +1,10 @@
 <h2>Finance</h2>
 
+<!-- ========================= -->
+<!-- ADD INVESTMENT FORM -->
+<!-- ========================= -->
+<h3>Add Investment</h3>
+
 <form action="/finance/add" method="POST">
     <input type="number" name="amount" placeholder="Amount" min="0" required>
 
@@ -20,6 +25,36 @@
 
 <hr>
 
+<!-- ========================= -->
+<!-- REINVEST FORM (ONLY IF PROFIT > 0) -->
+<!-- ========================= -->
+<% if (stats.profit > 0) { %>
+    <h3>Reinvest Profit</h3>
+
+    <form action="/finance/reinvest" method="POST">
+        <input type="number" name="amount" placeholder="Amount" min="0" max="<%= stats.profit %>" required>
+
+        <select name="poultryType" required>
+            <option value="">Select Poultry Type</option>
+            <option value="chicken">Chicken</option>
+            <option value="duck">Duck</option>
+            <option value="turkey">Turkey</option>
+            <option value="goose">Goose</option>
+            <option value="quail">Quail</option>
+            <option value="other">Other</option>
+        </select>
+
+        <input type="text" name="description" placeholder="Description">
+
+        <button type="submit">Reinvest</button>
+    </form>
+
+    <hr>
+<% } %>
+
+<!-- ========================= -->
+<!-- STATS -->
+<!-- ========================= -->
 <h3>Stats</h3>
 <p>Investment: <%= stats.investment %></p>
 <p>Poultry Sales: <%= stats.poultry %></p>
