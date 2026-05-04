@@ -22,6 +22,7 @@ exports.recordInvestment = async ({ amount, poultryType, description, userId }) 
 
   return await PoultryFinance.create({
     category: "investment",
+    metaType: "investment",
     poultryType,
     amount,
     description,
@@ -30,32 +31,70 @@ exports.recordInvestment = async ({ amount, poultryType, description, userId }) 
 };
 
 // =========================
-// RECORD REINVESTMENT
+// REINVEST PROFIT
 // =========================
 exports.reinvestProfit = async ({ amount, poultryType, description, userId }) => {
-  if (!VALID_POULTRY_TYPES.includes(poultryType)) {
-    throw new Error("Invalid poultry type");
-  }
-
   amount = Number(amount);
   if (!amount || amount <= 0) throw new Error("Invalid amount");
 
-  // Get current lifetime profit
   const stats = await exports.getLifetimeStats();
 
-  if (stats.profit <= 0) {
-    throw new Error("No profit available to reinvest");
-  }
-
   if (amount > stats.profit) {
-    throw new Error("Reinvestment amount cannot be greater than current profit");
+    throw new Error("Reinvestment exceeds available profit");
   }
 
   return await PoultryFinance.create({
     category: "investment",
+    metaType: "reinvest",
     poultryType,
     amount,
     description: description || "Reinvestment",
+    recordedBy: userId
+  });
+};
+
+// =========================
+// PAY WORKERS
+// =========================
+exports.payWorkers = async ({ amount, poultryType, description, userId }) => {
+  amount = Number(amount);
+  if (!amount || amount <= 0) throw new Error("Invalid amount");
+
+  const stats = await exports.getLifetimeStats();
+
+  if (amount > stats.profit) {
+    throw new Error("Insufficient profit for payroll");
+  }
+
+  return await PoultryFinance.create({
+    category: "investment",
+    metaType: "pay_workers",
+    poultryType,
+    amount,
+    description,
+    recordedBy: userId
+  });
+};
+
+// =========================
+// CONSUMPTION
+// =========================
+exports.addConsumption = async ({ amount, poultryType, description, userId }) => {
+  amount = Number(amount);
+  if (!amount || amount <= 0) throw new Error("Invalid amount");
+
+  const stats = await exports.getLifetimeStats();
+
+  if (amount > stats.profit) {
+    throw new Error("Insufficient profit for consumption");
+  }
+
+  return await PoultryFinance.create({
+    category: "investment",
+    metaType: "consumption",
+    poultryType,
+    amount,
+    description,
     recordedBy: userId
   });
 };
@@ -108,7 +147,7 @@ exports.recordEggSale = async ({ amount, quantity, poultryType, userId }) => {
 };
 
 // =========================
-// GET LIFETIME STATS (ALL TYPES COMBINED)
+// LIFETIME STATS
 // =========================
 exports.getLifetimeStats = async () => {
   const data = await PoultryFinance.aggregate([
@@ -137,7 +176,7 @@ exports.getLifetimeStats = async () => {
 };
 
 // =========================
-// GET MONTHLY STATS (RAW RECORDS)
+// MONTHLY STATS
 // =========================
 exports.getMonthlyStats = async (year, month) => {
   const start = new Date(year, month, 1);
