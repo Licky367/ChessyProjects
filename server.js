@@ -19,11 +19,11 @@ const indexRoutes = require("./routes/index");
 const profileRoutes = require("./routes/profile");
 const accountsRoutes = require("./routes/accounts");
 const poultryStatsRoutes = require("./routes/poultryStats");
-const eggRoutes = require("./routes/eggRoutes"); // if separated
-const cageRoutes = require("./routes/cageRoutes");
-const nursingRoutes = require("./routes/nursingRoutes");
-const financeRoutes = require("./routes/financeRoutes")
-const incubationRoutes = require("./routes/incubationRoutes")
+const eggRoutes = require("./routes/poultryEgg"); // if separated
+const cageRoutes = require("./routes/poultryCage");
+const nursingRoutes = require("./routes/poultryNursing");
+const financeRoutes = require("./routes/poultryFinance")
+const incubationRoutes = require("./routes/poultryIncubation")
 
 // ======================
 // SOCKET HANDLER
