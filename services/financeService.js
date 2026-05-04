@@ -18,13 +18,44 @@ exports.recordInvestment = async ({ amount, poultryType, description, userId }) 
   }
 
   amount = Number(amount);
-  if (amount < 0) throw new Error("Invalid amount");
+  if (!amount || amount <= 0) throw new Error("Invalid amount");
 
   return await PoultryFinance.create({
     category: "investment",
     poultryType,
     amount,
     description,
+    recordedBy: userId
+  });
+};
+
+// =========================
+// RECORD REINVESTMENT
+// =========================
+exports.reinvestProfit = async ({ amount, poultryType, description, userId }) => {
+  if (!VALID_POULTRY_TYPES.includes(poultryType)) {
+    throw new Error("Invalid poultry type");
+  }
+
+  amount = Number(amount);
+  if (!amount || amount <= 0) throw new Error("Invalid amount");
+
+  // Get current lifetime profit
+  const stats = await exports.getLifetimeStats();
+
+  if (stats.profit <= 0) {
+    throw new Error("No profit available to reinvest");
+  }
+
+  if (amount > stats.profit) {
+    throw new Error("Reinvestment amount cannot be greater than current profit");
+  }
+
+  return await PoultryFinance.create({
+    category: "investment",
+    poultryType,
+    amount,
+    description: description || "Reinvestment",
     recordedBy: userId
   });
 };
@@ -89,9 +120,9 @@ exports.getLifetimeStats = async () => {
     }
   ]);
 
-  let investment = 0,
-    poultry = 0,
-    eggs = 0;
+  let investment = 0;
+  let poultry = 0;
+  let eggs = 0;
 
   data.forEach((d) => {
     if (d._id === "investment") investment = d.total;
