@@ -1,27 +1,33 @@
 const financeService = require("../services/financeService");
 
 exports.renderFinancePage = async (req, res) => {
-  const stats = await financeService.getLifetimeStats();
-  const records = await financeService.getMonthlyStats(
-    new Date().getFullYear(),
-    new Date().getMonth()
-  );
+  try {
+    const stats = await financeService.getLifetimeStats();
 
-  res.render("finance/index", { stats, records });
+    const records = await financeService.getMonthlyStats(
+      new Date().getFullYear(),
+      new Date().getMonth()
+    );
+
+    res.render("finance/index", { stats, records });
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
 };
 
 exports.addInvestment = async (req, res) => {
   try {
-    const { amount, description } = req.body;
+    const { amount, poultryType, description } = req.body;
 
     await financeService.recordInvestment({
       amount,
+      poultryType,
       description,
       userId: req.user._id
     });
 
     res.redirect("/finance");
   } catch (err) {
-    res.send(err.message);
+    res.status(400).send(err.message);
   }
 };
