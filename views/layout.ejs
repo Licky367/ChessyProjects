@@ -291,8 +291,11 @@ if(user){
         <span class="arrow">›</span>
       </div>
       <div class="dropdown-content">
-        <a href="/poultry/add">Add Project</a>
-        <a href="/poultry/projects">View Projects</a>
+        <a href="/incubation">Start Incubation</a>
+        <a href="/nursing">View Poultry Progress</a>
+ <a href="/cage">View Caged Chicken</a>
+ <a href="/poultry-stats">Poultry Analytics</a>
+ <a href="/eggs">Sell Eggs</a>
       </div>
     </div>
 
@@ -303,6 +306,21 @@ if(user){
     <a href="/structures">🏗️ Facilities</a>
     <a href="/milk">🥛 Production</a>
     <a href="/sales">💰 Sales</a>
+
+  <% } %>
+
+</div>
+  </div>
+
+  <% } else if(user && user.role === "poultryWorker"){ %>
+
+    <a href="/">🏠 Home</a>
+    <a href="/incubation">Incubate Eggs</a>
+    <a href="/nursing">View Poultry Progress</a>
+    <a href="/cage">View Caged chicken</a>
+    <a href="/poultry-stats">Track Poduction</a>
+ <a href="/eggs">Sell Eggs</a>
+
 
   <% } %>
 
