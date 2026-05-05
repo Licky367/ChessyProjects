@@ -19,7 +19,7 @@ const indexRoutes = require("./routes/index");
 const profileRoutes = require("./routes/profile");
 const accountsRoutes = require("./routes/accounts");
 
-#POULTRY
+/*______POULTRY_____*/
 const poultryStatsRoutes = require("./routes/poultryStats");
 const eggRoutes = require("./routes/poultryEgg"); // if separated
 const cageRoutes = require("./routes/poultryCage");
@@ -28,7 +28,7 @@ const financeRoutes = require("./routes/poultryFinance");
 const incubationRoutes = require("./routes/poultryIncubation");
 const dashboardRoutes = require("./routes/dashboard");
 
-#AGRICULTURE
+/*________AGRICULTURE_______*/
 const farmRoutes = require("./routes/farm");
 
 
