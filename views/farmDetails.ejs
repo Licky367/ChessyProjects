@@ -8,26 +8,67 @@
 <p>Expected Completion: <%= project.expectedCompletionDate.toDateString() %></p>
 <p>Goals & Objectives: <%= project.goalsObjectives %></p>
 
+<!-- MARK AS BEGUN OR COMPLETED -->
 <% if(project.status === 'Not Begun'){ %>
-<form action="/farm/begin" method="POST">
-  <input type="hidden" name="id" value="<%= project._id %>">
-  <button type="submit">Mark as Begun</button>
+  <form action="/farm/begin" method="POST" style="margin-bottom:20px;">
+    <input type="hidden" name="id" value="<%= project._id %>">
+    <button type="submit">Mark as Begun</button>
+  </form>
+<% } else if(project.status === 'Begun'){ %>
+  <form action="/farm/complete" method="POST" style="margin-bottom:20px;">
+    <input type="hidden" name="id" value="<%= project._id %>">
+    <button type="submit">Mark as Completed</button>
+  </form>
+<% } %>
+
+<!-- ADD COST / INCOME -->
+<% if(project.status !== 'Completed'){ %>
+<h3>Add Cash Flow</h3>
+<form action="/farm/add-cost" method="POST" style="margin-bottom:30px;">
+  <input type="hidden" name="projectId" value="<%= project._id %>">
+
+  <label>Description</label>
+  <input type="text" name="costDescription" required>
+
+  <label>Amount</label>
+  <input type="number" name="amount" required>
+
+  <label>Type</label>
+  <select name="type" required>
+    <option value="outflow">Cash Outflow</option>
+    <option value="inflow">Cash Inflow</option>
+  </select>
+
+  <button type="submit">Add</button>
 </form>
 <% } %>
 
+<!-- FINANCE RECORDS TABLE -->
 <h3>Finance Records</h3>
-<ul>
-  <% finances.forEach(f => { %>
-    <li><%= f.costDescription %> : $<%= f.amount %></li>
-  <% }) %>
-</ul>
-
-<h3>Add Additional Cost</h3>
-<form action="/farm/add-cost" method="POST">
-  <input type="hidden" name="projectId" value="<%= project._id %>">
-  <label>Cost Description</label>
-  <input type="text" name="costDescription" required>
-  <label>Amount</label>
-  <input type="number" name="amount" required>
-  <button type="submit">Add Cost</button>
-</form>
+<table border="1" cellpadding="8" cellspacing="0">
+  <thead>
+    <tr>
+      <th>Description</th>
+      <th>Type</th>
+      <th>Amount ($)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% let total = 0; %>
+    <% finances.forEach(f => { %>
+      <% 
+        let displayAmount = f.type === 'outflow' ? -f.amount : f.amount; 
+        total += displayAmount;
+      %>
+      <tr>
+        <td><%= f.costDescription %></td>
+        <td><%= f.type === 'outflow' ? 'Outflow' : 'Inflow' %></td>
+        <td><%= displayAmount.toFixed(2) %></td>
+      </tr>
+    <% }) %>
+    <tr>
+      <td colspan="2"><strong>Profit / Total</strong></td>
+      <td><strong><%= total.toFixed(2) %></strong></td>
+    </tr>
+  </tbody>
+</table>
