@@ -1,9 +1,15 @@
 const farmService = require('../services/farmService');
 
+/**
+ * Show form to create new project
+ */
 exports.showCreateForm = (req, res) => {
   res.render('farm', { title: 'Create Farm Project' });
 };
 
+/**
+ * Create a new project
+ */
 exports.createProject = async (req, res) => {
   try {
     await farmService.createProject(req.body);
@@ -13,11 +19,17 @@ exports.createProject = async (req, res) => {
   }
 };
 
+/**
+ * List all projects
+ */
 exports.listProjects = async (req, res) => {
   const projects = await farmService.getAllProjects();
   res.render('farmProjects', { title: 'Farm Projects', projects });
 };
 
+/**
+ * Show project details along with finances
+ */
 exports.showProjectDetails = async (req, res) => {
   const project = await farmService.getProjectById(req.query.id);
   if (!project) return res.status(404).send('Project not found');
@@ -26,6 +38,9 @@ exports.showProjectDetails = async (req, res) => {
   res.render('farmDetails', { title: 'Project Details', project, finances });
 };
 
+/**
+ * Mark project as Begun
+ */
 exports.beginProject = async (req, res) => {
   try {
     const project = await farmService.markProjectBegun(req.body.id);
@@ -35,10 +50,26 @@ exports.beginProject = async (req, res) => {
   }
 };
 
+/**
+ * Mark project as Completed
+ */
+exports.completeProject = async (req, res) => {
+  try {
+    const project = await farmService.markProjectCompleted(req.body.id);
+    res.redirect(`/farm/details?id=${project._id}`);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+};
+
+/**
+ * Add additional cost or income
+ */
 exports.addCost = async (req, res) => {
   try {
-    await farmService.addAdditionalCost(req.body.projectId, req.body.costDescription, req.body.amount);
-    res.redirect(`/farm/details?id=${req.body.projectId}`);
+    const { projectId, costDescription, amount, type } = req.body;
+    await farmService.addAdditionalCost(projectId, costDescription, Number(amount), type);
+    res.redirect(`/farm/details?id=${projectId}`);
   } catch (err) {
     res.status(500).send(err.message);
   }
