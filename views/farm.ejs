@@ -1,0 +1,25 @@
+<%- include('partials/layout', { title }) %>
+
+<h2>Create Farm Project</h2>
+
+<form action="/farm/create" method="POST">
+  <label>Project Name</label>
+  <input type="text" name="name" required>
+
+  <label>Initial Cost</label>
+  <input type="number" name="initialCost" required>
+
+  <label>Description</label>
+  <textarea name="description"></textarea>
+
+  <label>Start Date</label>
+  <input type="date" name="startDate" required>
+
+  <label>Expected Completion Date</label>
+  <input type="date" name="expectedCompletionDate" required>
+
+  <label>Goals & Objectives</label>
+  <textarea name="goalsObjectives"></textarea>
+
+  <button type="submit">Create Project</button>
+</form>
