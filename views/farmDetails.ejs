@@ -1,0 +1,33 @@
+<%- include('partials/layout', { title }) %>
+
+<h2><%= project.name %></h2>
+
+<p>Status: <%= project.status %></p>
+<p>Description: <%= project.description %></p>
+<p>Start Date: <%= project.startDate.toDateString() %></p>
+<p>Expected Completion: <%= project.expectedCompletionDate.toDateString() %></p>
+<p>Goals & Objectives: <%= project.goalsObjectives %></p>
+
+<% if(project.status === 'Not Begun'){ %>
+<form action="/farm/begin" method="POST">
+  <input type="hidden" name="id" value="<%= project._id %>">
+  <button type="submit">Mark as Begun</button>
+</form>
+<% } %>
+
+<h3>Finance Records</h3>
+<ul>
+  <% finances.forEach(f => { %>
+    <li><%= f.costDescription %> : $<%= f.amount %></li>
+  <% }) %>
+</ul>
+
+<h3>Add Additional Cost</h3>
+<form action="/farm/add-cost" method="POST">
+  <input type="hidden" name="projectId" value="<%= project._id %>">
+  <label>Cost Description</label>
+  <input type="text" name="costDescription" required>
+  <label>Amount</label>
+  <input type="number" name="amount" required>
+  <button type="submit">Add Cost</button>
+</form>
