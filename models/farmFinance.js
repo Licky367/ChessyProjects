@@ -15,6 +15,11 @@ const farmFinanceSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  type: {  // <-- NEW
+    type: String,
+    enum: ['inflow', 'outflow'],
+    required: true,
+  },
   dateIncurred: {
     type: Date,
     default: Date.now,
