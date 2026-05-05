@@ -28,7 +28,7 @@ const farmSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['Not Begun', 'Begun'],
+    enum: ['Not Begun', 'Begun', 'Completed'],
     default: 'Not Begun',
   },
 }, { timestamps: true });
