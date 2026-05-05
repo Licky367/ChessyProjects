@@ -18,6 +18,8 @@ const financialsRoutes = require("./routes/financials");
 const indexRoutes = require("./routes/index");
 const profileRoutes = require("./routes/profile");
 const accountsRoutes = require("./routes/accounts");
+
+#POULTRY ROUTES
 const poultryStatsRoutes = require("./routes/poultryStats");
 const eggRoutes = require("./routes/poultryEgg"); // if separated
 const cageRoutes = require("./routes/poultryCage");
@@ -25,6 +27,9 @@ const nursingRoutes = require("./routes/poultryNursing");
 const financeRoutes = require("./routes/poultryFinance");
 const incubationRoutes = require("./routes/poultryIncubation");
 const dashboardRoutes = require("./routes/dashboard");
+
+#AGRICULTURE ROUTES
+const farmRoutes = require("./routes/farm");
 
 
 // ======================
@@ -135,6 +140,7 @@ app.use("/nursing", nursingRoutes);
 app.use("/incubation", incubationRoutes);
 app.use("/finance", financeRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/farm", farmRoutes);
 
 // ======================
 // 404 HANDLER
