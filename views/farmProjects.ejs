@@ -1,0 +1,11 @@
+<%- include('partials/layout', { title }) %>
+
+<h2>Farm Projects</h2>
+
+<ul>
+  <% projects.forEach(project => { %>
+    <li>
+      <a href="/farm/details?id=<%= project._id %>"><%= project.name %></a>
+    </li>
+  <% }) %>
+</ul>
