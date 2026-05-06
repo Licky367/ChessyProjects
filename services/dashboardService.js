@@ -33,7 +33,6 @@ exports.getPoultryDashboardLinks = () => {
 exports.getAgricultureDashboardLinks = () => {
   return [
     { name: "Start Project", url: "/farm", icon: "🌱" },
-    { name: "Financials", url: "/farm/finance", icon: "💰" },
-    { name: "View Projects", url: "/farm/view", icon: "📂" }
+    { name: "View Projects", url: "/farm/projects", icon: "📂" }
   ];
 };
