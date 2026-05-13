@@ -1,10 +1,15 @@
 const express = require("express");
 const http = require("http");
 const path = require("path");
-const mongoose = require("mongoose");
 const expressLayouts = require("express-ejs-layouts");
 const session = require("express-session");
 const { Server } = require("socket.io");
+require("dotenv").config();
+
+// ======================
+// DATABASE
+// ======================
+const connectDB = require("./db");
 
 // ======================
 // ROUTES
@@ -21,7 +26,7 @@ const accountsRoutes = require("./routes/accounts");
 
 /*______POULTRY_____*/
 const poultryStatsRoutes = require("./routes/poultryStats");
-const eggRoutes = require("./routes/poultryEgg"); // if separated
+const eggRoutes = require("./routes/poultryEgg");
 const cageRoutes = require("./routes/poultryCage");
 const nursingRoutes = require("./routes/poultryNursing");
 const financeRoutes = require("./routes/poultryFinance");
@@ -30,7 +35,6 @@ const dashboardRoutes = require("./routes/dashboard");
 
 /*________AGRICULTURE_______*/
 const farmRoutes = require("./routes/farm");
-
 
 // ======================
 // SOCKET HANDLER
@@ -59,23 +63,15 @@ const io = new Server(server, {
 });
 
 app.set("io", io);
+
 socketHandler(io);
 
 // ======================
-// DATABASE CONNECTION
+// CONNECT DATABASE
 // ======================
-const MONGO_URI =
-  process.env.MONGO_URI || "mongodb://127.0.0.1:27017/project_db";
-
-mongoose
-  .connect(MONGO_URI)
-  .then(async () => {
-    console.log("🟢 MongoDB Connected");
-
-    // ✅ AUTO SEED ADMIN
-    await seedAdmin();
-  })
-  .catch((err) => console.log("🔴 MongoDB Error:", err));
+connectDB().then(async () => {
+  await seedAdmin();
+});
 
 // ======================
 // MIDDLEWARE
@@ -93,7 +89,7 @@ app.use(
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      maxAge: 1000 * 60 * 60 * 24, // 1 Day
     },
   })
 );
@@ -110,7 +106,11 @@ app.use((req, res, next) => {
 // STATIC FILES
 // ======================
 app.use(express.static(path.join(__dirname, "public")));
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "public/uploads"))
+);
 
 // ======================
 // VIEW ENGINE
@@ -125,21 +125,39 @@ app.set("layout", "layout");
 // ROUTES
 // ======================
 app.use("/", indexRoutes);
+
 app.use("/create-invite", createRoutes);
+
 app.use("/", authRoutes);
+
 app.use("/", updateRoutes);
+
 app.use("/", profileRoutes);
+
 app.use("/", milkRoutes);
+
 app.use("/accounts", accountsRoutes);
+
 app.use("/financials", financialsRoutes);
+
 app.use("/dairy", newRoutes);
+
+/*______POULTRY_____*/
 app.use("/poultry-stats", poultryStatsRoutes);
+
 app.use("/eggs", eggRoutes);
+
 app.use("/cage", cageRoutes);
+
 app.use("/nursing", nursingRoutes);
+
 app.use("/incubation", incubationRoutes);
+
 app.use("/finance", financeRoutes);
+
 app.use("/dashboard", dashboardRoutes);
+
+/*________AGRICULTURE_______*/
 app.use("/farm", farmRoutes);
 
 // ======================
