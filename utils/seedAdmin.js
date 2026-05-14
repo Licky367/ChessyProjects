@@ -15,7 +15,7 @@ const seedAdmin = async () => {
       profileImage: "",
       name: "Project Admin",
       phone: "0700000000",
-      email: "admin@corevester.com",
+      email: "admin@chessyprojects.com",
       password: "Admin@123",
       role: "admin",
     });
